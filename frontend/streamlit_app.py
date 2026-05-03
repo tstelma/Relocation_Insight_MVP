@@ -32,7 +32,14 @@ def to_ordinal(value: int) -> str:
     return f"{value}{suffix}"
 
 
-def build_rank_message(rank: int, total: int) -> str:
+def build_rank_message(category: str, rank: int, total: int) -> str:
+    if category == "income_capacity":
+        if rank == 1:
+            return "Highest income capacity among selected countries"
+        if rank == total:
+            return "Lowest income capacity among selected countries"
+        return f"{to_ordinal(rank)} highest income capacity out of {total} selected countries"
+
     if rank == 1:
         return "Lowest pressure among selected countries"
     if rank == total:
@@ -45,7 +52,8 @@ def get_metric_label(category: str) -> str:
     labels = {
         "inflation_pressure": "Annual inflation rate",
         "housing_pressure": "Housing overburden rate",
-        "poverty_pressure": "At-risk-of-poverty rate"
+        "poverty_pressure": "At-risk-of-poverty rate",
+        "income_capacity": "Income capacity"
     }
     return labels.get(category, category.replace("_", " ").title())
 
@@ -55,6 +63,18 @@ def format_percentage(value: float | None) -> str:
     if pd.isna(value):
         return "N/A"
     return f"{value:.2f}%"
+
+
+def format_metric_value(category: str, value: float | None) -> str:
+    if pd.isna(value):
+        return "N/A"
+    if category == "income_capacity":
+        return f"{value:,.0f} PPS"
+    return format_percentage(value)
+
+
+def is_higher_better(category: str) -> bool:
+    return category == "income_capacity"
 
 
 def get_overall_pressure(country_data: pd.DataFrame) -> str:
@@ -91,6 +111,7 @@ def get_overall_pressure(country_data: pd.DataFrame) -> str:
 
 
 def get_key_risk_driver(country_data: pd.DataFrame):
+    pressure_categories = {"inflation_pressure", "housing_pressure", "poverty_pressure"}
     severity_map = {
         "Low": 1,
         "Moderate": 2,
@@ -99,6 +120,8 @@ def get_key_risk_driver(country_data: pd.DataFrame):
     }
     candidates = []
     for _, row in country_data.iterrows():
+        if row["insight_category"] not in pressure_categories:
+            continue
         severity = severity_map.get(row["pressure_label"])
         if severity is None:
             continue
@@ -119,7 +142,7 @@ def render_key_risk_driver(country_data: pd.DataFrame) -> None:
 
     st.markdown("**Key risk driver**")
     st.markdown(f"**{get_metric_label(best['insight_category'])}**")
-    st.write(format_percentage(best["metric_value"]))
+    st.write(format_metric_value(best['insight_category'], best["metric_value"]))
     st.caption(f"{best['pressure_label']} • {best.get('relative_rank_message', '')}")
 
     explanations = {
@@ -129,6 +152,21 @@ def render_key_risk_driver(country_data: pd.DataFrame) -> None:
         "Very High": "This indicator is the strongest risk driver, suggesting significant pressure.",
     }
     st.write(explanations.get(best["pressure_label"], "This is the leading pressure signal for this country."))
+
+
+def render_income_capacity_signal(country_data: pd.DataFrame) -> None:
+    row = country_data.loc[country_data["insight_category"] == "income_capacity"]
+    if row.empty:
+        return
+
+    row = row.iloc[0]
+    st.markdown("**Supporting income capacity signal**")
+    st.markdown(f"**{get_metric_label(row['insight_category'])}**")
+    st.write(format_metric_value(row['insight_category'], row["metric_value"]))
+    st.caption(f"{row['pressure_label']} income capacity • {row.get('relative_rank_message', '')}")
+    st.write(
+        "Higher income capacity suggests stronger local purchasing power and a better starting point for relocation decisions."
+    )
 
 
 def render_research_checklist(country_data: pd.DataFrame) -> None:
@@ -161,6 +199,11 @@ def render_research_checklist(country_data: pd.DataFrame) -> None:
                 "Review income distribution and social benefits.",
                 "Consider regional inequality and local support services.",
             ]
+            income_row = country_data.loc[country_data["insight_category"] == "income_capacity"]
+            if not income_row.empty and income_row.iloc[0]["pressure_label"] == "Low":
+                checklist.append(
+                    "Compare local purchasing power and income capacity when median income capacity appears weak."
+                )
         else:
             checklist = [
                 "Review salary after tax and cost of living.",
@@ -217,6 +260,10 @@ def render_methodology_notes() -> None:
             "Poverty pressure uses at-risk-of-poverty rate from Eurostat SILC."
         )
         st.write(
+            "Income capacity uses median equivalised net income from Eurostat ilc_di03, expressed in PPS. "
+            "Higher income capacity values are better, unlike the cost pressure indicators."
+        )
+        st.write(
             "Pressure labels are simplified MVP categories for early-stage signals only, "
             "not detailed economic diagnostics. Country comparisons are signals, not full relocation recommendations."
         )
@@ -236,9 +283,9 @@ def render_comparison_verdict(comparison_df: pd.DataFrame, country_a: str, count
         return
 
     if a_wins > b_wins:
-        verdict = f"{country_a} has an overall MVP pressure advantage across the available indicators."
+        verdict = f"{country_a} has an overall MVP advantage across the available indicators."
     elif b_wins > a_wins:
-        verdict = f"{country_b} has an overall MVP pressure advantage across the available indicators."
+        verdict = f"{country_b} has an overall MVP advantage across the available indicators."
     else:
         verdict = "The comparison is mixed across the available indicators."
 
@@ -253,6 +300,7 @@ def render_country_profile(country_data: pd.DataFrame, selected_country: str) ->
     st.markdown(f"**Overall pressure snapshot:** {overall_pressure}")
     render_country_profile_export(country_data, selected_country)
     render_key_risk_driver(country_data)
+    render_income_capacity_signal(country_data)
     render_research_checklist(country_data)
     render_data_freshness_note(country_data)
     render_methodology_notes()
@@ -261,8 +309,9 @@ def render_country_profile(country_data: pd.DataFrame, selected_country: str) ->
         "inflation_pressure",
         "housing_pressure",
         "poverty_pressure",
+        "income_capacity",
     ]
-    cols = st.columns(3)
+    cols = st.columns(4)
 
     for idx, category in enumerate(indicator_categories):
         row = country_data.loc[country_data["insight_category"] == category]
@@ -271,8 +320,11 @@ def render_country_profile(country_data: pd.DataFrame, selected_country: str) ->
         row = row.iloc[0]
         with cols[idx]:
             st.markdown(f"**{get_metric_label(category)}**")
-            st.write(format_percentage(row["metric_value"]))
-            st.caption(f"{row['pressure_label']} • {row['relative_rank_message']}")
+            st.write(format_metric_value(category, row["metric_value"]))
+            caption_label = row['pressure_label']
+            if category == "income_capacity":
+                caption_label = f"{caption_label} income capacity"
+            st.caption(f"{caption_label} • {row['relative_rank_message']}")
 
     interpretation_map = {
         "Generally low pressure": "All tracked indicators are low, suggesting a stable financial profile.",
@@ -299,14 +351,18 @@ def main():
         return
 
     # Calculate relative ranking across all countries by category
-    df["relative_rank"] = (
-        df.groupby("insight_category")["metric_value"]
-        .rank(method="min", ascending=True)
-    )
+    def rank_group(group: pd.DataFrame) -> pd.Series:
+        ascending = group.name != "income_capacity"
+        return group["metric_value"].rank(method="min", ascending=ascending)
+
+    df["relative_rank"] = df.groupby("insight_category", group_keys=False).apply(rank_group)
     df["category_count"] = df.groupby("insight_category")["metric_value"].transform("count")
     df["relative_rank_message"] = df.apply(
-        lambda row: build_rank_message(int(row["relative_rank"]), int(row["category_count"]))
-        if pd.notna(row["relative_rank"]) else "Rank unavailable",
+        lambda row: build_rank_message(
+            row["insight_category"],
+            int(row["relative_rank"]),
+            int(row["category_count"]),
+        ) if pd.notna(row["relative_rank"]) else "Rank unavailable",
         axis=1,
     )
 
@@ -421,7 +477,7 @@ def main():
             # Metric value
             st.metric(
                 label=get_metric_label(row['insight_category']),
-                value=format_percentage(row['metric_value'])
+                value=format_metric_value(row['insight_category'], row['metric_value'])
             )
 
             # Main message
@@ -472,36 +528,45 @@ def main():
     to_housing = get_metric(to_country, "housing_pressure")
     from_poverty = get_metric(from_country, "poverty_pressure")
     to_poverty = get_metric(to_country, "poverty_pressure")
+    from_income_capacity = get_metric(from_country, "income_capacity")
+    to_income_capacity = get_metric(to_country, "income_capacity")
 
     comparison_rows = []
-    for metric_label, from_value, to_value in [
-        ("Annual inflation rate", from_inflation, to_inflation),
-        ("Housing overburden rate", from_housing, to_housing),
-        ("At-risk-of-poverty rate", from_poverty, to_poverty),
+    for metric_label, category, from_value, to_value in [
+        ("Annual inflation rate", "inflation_pressure", from_inflation, to_inflation),
+        ("Housing overburden rate", "housing_pressure", from_housing, to_housing),
+        ("At-risk-of-poverty rate", "poverty_pressure", from_poverty, to_poverty),
+        ("Income capacity", "income_capacity", from_income_capacity, to_income_capacity),
     ]:
         if from_value is None or to_value is None:
             difference = None
             better = "Data unavailable"
         else:
             difference = to_value - from_value
-            if difference < 0:
-                better = to_country
-            elif difference > 0:
-                better = from_country
-            else:
+            if difference == 0:
                 better = "Equal"
+            else:
+                higher_is_better = is_higher_better(category)
+                if (difference > 0) == higher_is_better:
+                    better = to_country
+                else:
+                    better = from_country
 
         comparison_rows.append({
             "Metric": metric_label,
-            "From country value": format_percentage(from_value),
-            "To country value": format_percentage(to_value),
-            "Difference": f"{difference:+.2f}%" if difference is not None else "N/A",
+            "From country value": format_metric_value(category, from_value),
+            "To country value": format_metric_value(category, to_value),
+            "Difference": (
+                f"{difference:+.2f}%" if difference is not None and category != "income_capacity"
+                else f"{difference:+,.0f} PPS" if difference is not None
+                else "N/A"
+            ),
             "Better country": better,
         })
 
     comparison_df = pd.DataFrame(comparison_rows)
     st.table(comparison_df)
-    st.caption("Lower values suggest lower financial pressure for this metric.")
+    st.caption("Lower values indicate lower pressure; higher values indicate stronger income capacity.")
     st.divider()
 
     # Comparison summary
@@ -509,14 +574,16 @@ def main():
     inflation_better = comparison_rows[0]["Better country"]
     housing_better = comparison_rows[1]["Better country"]
     poverty_better = comparison_rows[2]["Better country"]
+    income_better = comparison_rows[3]["Better country"]
     inflation_diff = None if from_inflation is None or to_inflation is None else abs(to_inflation - from_inflation)
     housing_diff = None if from_housing is None or to_housing is None else abs(to_housing - from_housing)
     poverty_diff = None if from_poverty is None or to_poverty is None else abs(to_poverty - from_poverty)
+    income_diff = None if from_income_capacity is None or to_income_capacity is None else abs(to_income_capacity - from_income_capacity)
 
-    if (inflation_diff is not None and housing_diff is not None and poverty_diff is not None and
-        inflation_diff < 0.5 and housing_diff < 0.5 and poverty_diff < 0.5):
+    if (inflation_diff is not None and housing_diff is not None and poverty_diff is not None and income_diff is not None and
+        inflation_diff < 0.5 and housing_diff < 0.5 and poverty_diff < 0.5 and income_diff < 500):
         tradeoff_label = "No major difference"
-    elif (inflation_better == housing_better == poverty_better and
+    elif (inflation_better == housing_better == poverty_better == income_better and
           inflation_better not in ["Equal", "Data unavailable"]):
         tradeoff_label = f"Clear advantage for {inflation_better}"
     else:
@@ -524,9 +591,9 @@ def main():
 
     st.write(f"**Trade-off label:** {tradeoff_label}")
 
-    if (inflation_better == housing_better == poverty_better and
+    if (inflation_better == housing_better == poverty_better == income_better and
         inflation_better not in ["Equal", "Data unavailable"]):
-        summary_text = f"{inflation_better} shows lower pressure across all tracked indicators."
+        summary_text = f"{inflation_better} shows better pressure and income capacity across the tracked indicators."
     else:
         summary_text = "This comparison shows a mixed trade-off across the tracked indicators."
 
