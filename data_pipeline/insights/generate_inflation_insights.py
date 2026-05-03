@@ -1,6 +1,12 @@
 from pathlib import Path
+import sys
 import pandas as pd
 
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+sys.path.append(str(BASE_DIR / "data_pipeline"))
+
+from utils.config_loader import load_yaml_config
 
 INPUT_PATH = Path("data") / "clean" / "hicp_annual_inflation_mvp_countries.csv"
 OUTPUT_PATH = Path("data") / "clean" / "inflation_pressure_insights.csv"
@@ -70,6 +76,11 @@ def create_why_it_matters(pressure_label: str) -> str:
 
 if __name__ == "__main__":
     df = pd.read_csv(INPUT_PATH)
+    countries_config = load_yaml_config("countries.yml")
+    country_name_map = {
+        country["code"]: country["name"]
+        for country in countries_config["countries"]
+    }
     df["time_period"] = pd.to_datetime(df["time_period"])
 
     latest_df = (
@@ -78,6 +89,7 @@ if __name__ == "__main__":
         .tail(1)
         .copy()
     )
+    latest_df["country_name"] = latest_df["country_code"].map(country_name_map)
 
     latest_df["pressure_label"] = latest_df["annual_inflation_rate"].apply(
         classify_inflation_pressure
@@ -103,6 +115,7 @@ if __name__ == "__main__":
     result = latest_df[
         [
             "country_code",
+            "country_name",
             "time_period",
             "annual_inflation_rate",
             "pressure_label",
@@ -116,5 +129,5 @@ if __name__ == "__main__":
 
     result.to_csv(OUTPUT_PATH, index=False)
 
-    print(result[["country_code", "title", "main_message", "confidence_level"]])
+    print(result[["country_code", "country_name", "title", "main_message", "confidence_level"]])
     print(f"\nSaved inflation insight cards to: {OUTPUT_PATH}")
