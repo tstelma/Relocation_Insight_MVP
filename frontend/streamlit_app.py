@@ -93,8 +93,12 @@ def main():
         country_data["insight_category"] == "housing_pressure",
         "metric_value"
     ].mean()
+    poverty_value = country_data.loc[
+        country_data["insight_category"] == "poverty_pressure",
+        "metric_value"
+    ].mean()
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Total insights", total_insights)
     col2.metric("High / Very High pressure", high_pressure_count)
     col3.metric(
@@ -104,6 +108,10 @@ def main():
     col4.metric(
         "Housing burden value",
         f"{housing_value:.2f}" if pd.notna(housing_value) else "N/A"
+    )
+    col5.metric(
+        "Poverty risk value",
+        f"{poverty_value:.2f}" if pd.notna(poverty_value) else "N/A"
     )
 
     # Display insight cards
@@ -176,11 +184,14 @@ def main():
     to_inflation = get_metric(to_country, "inflation_pressure")
     from_housing = get_metric(from_country, "housing_pressure")
     to_housing = get_metric(to_country, "housing_pressure")
+    from_poverty = get_metric(from_country, "poverty_pressure")
+    to_poverty = get_metric(to_country, "poverty_pressure")
 
     comparison_rows = []
     for metric_label, from_value, to_value in [
         ("Inflation pressure", from_inflation, to_inflation),
         ("Housing burden", from_housing, to_housing),
+        ("Poverty risk", from_poverty, to_poverty),
     ]:
         if from_value is None or to_value is None:
             difference = None
@@ -210,33 +221,31 @@ def main():
     st.subheader("Comparison summary")
     inflation_better = comparison_rows[0]["Better country"]
     housing_better = comparison_rows[1]["Better country"]
+    poverty_better = comparison_rows[2]["Better country"]
     inflation_diff = None if from_inflation is None or to_inflation is None else abs(to_inflation - from_inflation)
     housing_diff = None if from_housing is None or to_housing is None else abs(to_housing - from_housing)
+    poverty_diff = None if from_poverty is None or to_poverty is None else abs(to_poverty - from_poverty)
 
-    if inflation_diff is not None and housing_diff is not None and inflation_diff < 0.5 and housing_diff < 0.5:
+    if (inflation_diff is not None and housing_diff is not None and poverty_diff is not None and
+        inflation_diff < 0.5 and housing_diff < 0.5 and poverty_diff < 0.5):
         tradeoff_label = "No major difference"
-    elif inflation_better == housing_better and inflation_better not in ["Equal", "Data unavailable"]:
+    elif (inflation_better == housing_better == poverty_better and
+          inflation_better not in ["Equal", "Data unavailable"]):
         tradeoff_label = f"Clear advantage for {inflation_better}"
-    elif inflation_better not in ["Equal", "Data unavailable"] and housing_better not in ["Equal", "Data unavailable"] and inflation_better != housing_better:
-        tradeoff_label = "Mixed trade-off"
     else:
         tradeoff_label = "Mixed trade-off"
 
     st.write(f"**Trade-off label:** {tradeoff_label}")
 
-    if inflation_better == housing_better and inflation_better not in ["Equal", "Data unavailable"]:
-        summary_text = f"{inflation_better} shows lower pressure across both tracked indicators."
-    elif inflation_better not in ["Equal", "Data unavailable"] and housing_better not in ["Equal", "Data unavailable"] and inflation_better != housing_better:
-        summary_text = (
-            f"This comparison shows a mixed trade-off: {inflation_better} performs better on Inflation pressure, "
-            f"while {housing_better} performs better on Housing burden."
-        )
+    if (inflation_better == housing_better == poverty_better and
+        inflation_better not in ["Equal", "Data unavailable"]):
+        summary_text = f"{inflation_better} shows lower pressure across all tracked indicators."
     else:
-        summary_text = "This comparison includes equal or unavailable values for one or both metrics."
+        summary_text = "This comparison shows a mixed trade-off across the tracked indicators."
 
     st.write(summary_text)
     st.info(
-        "This MVP currently compares only inflation pressure and housing burden. "
+        "This MVP currently compares inflation pressure, housing burden, and poverty risk. "
         "It does not yet include salary levels, taxes, career opportunities, language, culture, lifestyle preferences, healthcare, "
         "or personal circumstances."
     )
