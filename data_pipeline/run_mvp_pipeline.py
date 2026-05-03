@@ -55,7 +55,13 @@ def main():
         "Running income capacity pipeline"
     )
 
-    # Step 5: Combine MVP insights
+    # Step 5: Export standardized historical time-series
+    run_command(
+        [sys.executable, "data_pipeline/transform/export_timeseries.py"],
+        "Exporting standardized MVP time-series"
+    )
+
+    # Step 6: Combine MVP insights
     run_command(
         [sys.executable, "data_pipeline/insights/combine_insights.py"],
         "Combining MVP insights"
