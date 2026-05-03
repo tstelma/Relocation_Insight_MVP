@@ -148,6 +148,64 @@ def main():
 
             st.divider()
 
+    # Compare two countries
+    st.subheader("Compare two countries")
+    compare_col1, compare_col2 = st.columns(2)
+    from_country = compare_col1.selectbox(
+        "From country",
+        countries,
+        index=0,
+        key="from_country"
+    )
+    to_country = compare_col2.selectbox(
+        "To country",
+        countries,
+        index=1 if len(countries) > 1 else 0,
+        key="to_country"
+    )
+
+    def get_metric(country_name: str, category: str) -> float | None:
+        values = df.loc[
+            (df["country_name"] == country_name) &
+            (df["insight_category"] == category),
+            "metric_value"
+        ]
+        return values.mean() if not values.empty else None
+
+    from_inflation = get_metric(from_country, "inflation_pressure")
+    to_inflation = get_metric(to_country, "inflation_pressure")
+    from_housing = get_metric(from_country, "housing_pressure")
+    to_housing = get_metric(to_country, "housing_pressure")
+
+    comparison_rows = []
+    for metric_label, from_value, to_value in [
+        ("Inflation pressure", from_inflation, to_inflation),
+        ("Housing burden", from_housing, to_housing),
+    ]:
+        if from_value is None or to_value is None:
+            difference = None
+            better = "Data unavailable"
+        else:
+            difference = to_value - from_value
+            if difference < 0:
+                better = to_country
+            elif difference > 0:
+                better = from_country
+            else:
+                better = "Equal"
+
+        comparison_rows.append({
+            "Metric": metric_label,
+            "From country value": f"{from_value:.2f}" if pd.notna(from_value) else "N/A",
+            "To country value": f"{to_value:.2f}" if pd.notna(to_value) else "N/A",
+            "Difference": f"{difference:.2f}" if difference is not None else "N/A",
+            "Better country": better,
+        })
+
+    comparison_df = pd.DataFrame(comparison_rows)
+    st.table(comparison_df)
+    st.write("Lower values suggest lower financial pressure for this metric.")
+
     # Raw data table
     st.header("📋 Raw Data")
     st.dataframe(
