@@ -43,7 +43,7 @@ countries:
     name: Germany
     currency: EUR
 
-  - code: GR
+  - code: EL
     name: Greece
     currency: EUR
 
