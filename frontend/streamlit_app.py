@@ -90,12 +90,46 @@ def get_overall_pressure(country_data: pd.DataFrame) -> str:
     return "Uneven pressure profile"
 
 
+def render_key_risk_driver(country_data: pd.DataFrame) -> None:
+    severity_map = {
+        "Low": 1,
+        "Moderate": 2,
+        "High": 3,
+        "Very High": 4,
+    }
+    candidates = []
+    for _, row in country_data.iterrows():
+        severity = severity_map.get(row["pressure_label"])
+        if severity is None:
+            continue
+        candidates.append((severity, row["metric_value"], row))
+
+    if not candidates:
+        st.markdown("**Key risk driver:** Data unavailable")
+        return
+
+    best = max(candidates, key=lambda entry: (entry[0], entry[1] if pd.notna(entry[1]) else float("-inf")))[2]
+    st.markdown("**Key risk driver**")
+    st.markdown(f"**{get_metric_label(best['insight_category'])}**")
+    st.write(format_percentage(best["metric_value"]))
+    st.caption(f"{best['pressure_label']} • {best.get('relative_rank_message', '')}")
+
+    explanations = {
+        "Low": "This indicator is the strongest signal, but the pressure level remains low.",
+        "Moderate": "This indicator shows moderate pressure and should be monitored.",
+        "High": "This indicator is a high pressure signal and may be a key relocation concern.",
+        "Very High": "This indicator is the strongest risk driver, suggesting significant pressure.",
+    }
+    st.write(explanations.get(best["pressure_label"], "This is the leading pressure signal for this country."))
+
+
 def render_country_profile(country_data: pd.DataFrame, selected_country: str) -> None:
     overall_pressure = get_overall_pressure(country_data)
 
     st.subheader("Country Profile")
     st.markdown(f"**{selected_country}**")
     st.markdown(f"**Overall pressure snapshot:** {overall_pressure}")
+    render_key_risk_driver(country_data)
 
     indicator_categories = [
         "inflation_pressure",
