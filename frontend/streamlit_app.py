@@ -57,6 +57,75 @@ def format_percentage(value: float | None) -> str:
     return f"{value:.2f}%"
 
 
+def get_overall_pressure(country_data: pd.DataFrame) -> str:
+    inflation_label = country_data.loc[
+        country_data["insight_category"] == "inflation_pressure",
+        "pressure_label"
+    ].values[0] if len(country_data[country_data["insight_category"] == "inflation_pressure"]) > 0 else None
+
+    housing_label = country_data.loc[
+        country_data["insight_category"] == "housing_pressure",
+        "pressure_label"
+    ].values[0] if len(country_data[country_data["insight_category"] == "housing_pressure"]) > 0 else None
+
+    poverty_label = country_data.loc[
+        country_data["insight_category"] == "poverty_pressure",
+        "pressure_label"
+    ].values[0] if len(country_data[country_data["insight_category"] == "poverty_pressure"]) > 0 else None
+
+    if all([inflation_label == "Low", housing_label == "Low", poverty_label == "Low"]):
+        return "Generally low pressure"
+    if (inflation_label in ["Low", "Moderate"] and housing_label == "Low" and 
+            poverty_label in ["Moderate", "High", "Very High"]):
+        return "Price-stable, social risk visible"
+    if (inflation_label in ["Low", "Moderate"] and housing_label in ["High", "Very High"]):
+        return "Housing stress despite price stability"
+    if (inflation_label in ["High", "Very High"] and housing_label in ["Low", "Moderate"]):
+        return "Price pressure, housing less severe"
+    if (poverty_label in ["High", "Very High"] and inflation_label in ["Low", "Moderate"] and
+            housing_label in ["Low", "Moderate"]):
+        return "Social vulnerability despite manageable costs"
+    if country_data["pressure_label"].isin(["High", "Very High"]).sum() >= 2:
+        return "Broad pressure risk"
+    return "Uneven pressure profile"
+
+
+def render_country_profile(country_data: pd.DataFrame, selected_country: str) -> None:
+    overall_pressure = get_overall_pressure(country_data)
+
+    st.subheader("Country Profile")
+    st.markdown(f"**{selected_country}**")
+    st.markdown(f"**Overall pressure snapshot:** {overall_pressure}")
+
+    indicator_categories = [
+        "inflation_pressure",
+        "housing_pressure",
+        "poverty_pressure",
+    ]
+    cols = st.columns(3)
+
+    for idx, category in enumerate(indicator_categories):
+        row = country_data.loc[country_data["insight_category"] == category]
+        if row.empty:
+            continue
+        row = row.iloc[0]
+        with cols[idx]:
+            st.markdown(f"**{get_metric_label(category)}**")
+            st.write(format_percentage(row["metric_value"]))
+            st.caption(f"{row['pressure_label']} • {row['relative_rank_message']}")
+
+    interpretation_map = {
+        "Generally low pressure": "All tracked indicators are low, suggesting a stable financial profile.",
+        "Price-stable, social risk visible": "Prices are relatively stable, but poverty risk is showing some social pressure.",
+        "Housing stress despite price stability": "Housing costs are high even though inflation is not the main source of pressure.",
+        "Price pressure, housing less severe": "Inflation is high while housing pressure remains more moderate.",
+        "Social vulnerability despite manageable costs": "Poverty risk is high even though prices and housing pressure are not extreme.",
+        "Broad pressure risk": "Multiple indicators show high pressure, suggesting broad financial stress.",
+        "Uneven pressure profile": "The country shows a mixed profile across inflation, housing, and poverty pressures."
+    }
+    st.write(interpretation_map.get(overall_pressure, "This country has a mixed pressure profile across the tracked indicators."))
+
+
 def main():
     st.title("🏠 Relocation Insight MVP")
     st.markdown("*Explore early financial pressure insights for selected European countries.*")
@@ -166,8 +235,7 @@ def main():
         f"{poverty_value:.2f}" if pd.notna(poverty_value) else "N/A"
     )
 
-    # Display overall pressure snapshot separately
-    st.markdown(f"**Overall pressure snapshot:** {overall_pressure}")
+    render_country_profile(country_data, selected_country)
 
     # Display insight cards
     for _, row in country_data.iterrows():
