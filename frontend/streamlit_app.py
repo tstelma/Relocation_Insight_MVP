@@ -189,6 +189,19 @@ def render_data_freshness_note(country_data: pd.DataFrame) -> None:
         st.markdown(f"*Latest data period used: {latest_period}*")
 
 
+def render_methodology_notes() -> None:
+    with st.expander("Methodology notes"):
+        st.write(
+            "Inflation pressure uses annual inflation rate from Eurostat HICP. "
+            "Housing pressure uses housing overburden rate from Eurostat SILC. "
+            "Poverty pressure uses at-risk-of-poverty rate from Eurostat SILC."
+        )
+        st.write(
+            "Pressure labels are simplified MVP categories for early-stage signals only, "
+            "not detailed economic diagnostics. Country comparisons are signals, not full relocation recommendations."
+        )
+
+
 def render_country_profile(country_data: pd.DataFrame, selected_country: str) -> None:
     overall_pressure = get_overall_pressure(country_data)
 
@@ -198,6 +211,7 @@ def render_country_profile(country_data: pd.DataFrame, selected_country: str) ->
     render_key_risk_driver(country_data)
     render_research_checklist(country_data)
     render_data_freshness_note(country_data)
+    render_methodology_notes()
 
     indicator_categories = [
         "inflation_pressure",
