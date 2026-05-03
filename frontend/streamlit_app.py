@@ -46,6 +46,20 @@ def main():
 
     st.header(f"📊 Insights for {selected_country}")
 
+    # Country pressure summary
+    st.subheader("Country pressure summary")
+    total_insights = len(country_data)
+    high_pressure_count = country_data["pressure_label"].isin(["High", "Very High"]).sum()
+    average_metric_value = country_data["metric_value"].mean()
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total insights", total_insights)
+    col2.metric("High / Very High pressure", high_pressure_count)
+    col3.metric(
+        "Average metric value",
+        f"{average_metric_value:.2f}" if pd.notna(average_metric_value) else "N/A"
+    )
+
     # Display insight cards
     for _, row in country_data.iterrows():
         with st.container():
