@@ -67,6 +67,19 @@ def run_indicator_export(indicator_key: str) -> None:
     )
     print(latest_rows)
 
+    # Generate housing insights if housing_overburden was exported
+    if indicator_key == "housing_overburden":
+        from insights.generate_housing_insights import generate_housing_insight_cards
+
+        print(f"\nGenerating housing pressure insights...")
+        insights_df = generate_housing_insight_cards(output_path)
+        insights_output_path = CLEAN_DATA_DIR / "housing_pressure_insights.csv"
+        insights_df.to_csv(insights_output_path, index=False)
+
+        print(f"Saved housing pressure insights to: {insights_output_path}")
+        print("\nHousing pressure insights preview:")
+        print(insights_df[["country_code", "country_name", "title", "housing_overburden_rate", "pressure_label"]])
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Export indicator data for all MVP countries")
