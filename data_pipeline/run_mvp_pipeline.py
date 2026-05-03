@@ -49,7 +49,13 @@ def main():
         "Running poverty risk pipeline"
     )
 
-    # Step 4: Combine MVP insights
+    # Step 4: Run income capacity pipeline
+    run_command(
+        [sys.executable, "data_pipeline/run_indicator_export.py", "income_capacity"],
+        "Running income capacity pipeline"
+    )
+
+    # Step 5: Combine MVP insights
     run_command(
         [sys.executable, "data_pipeline/insights/combine_insights.py"],
         "Combining MVP insights"

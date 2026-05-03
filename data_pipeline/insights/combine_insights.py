@@ -9,6 +9,7 @@ sys.path.append(str(BASE_DIR / "data_pipeline"))
 INFLATION_INSIGHTS_PATH = Path("data") / "clean" / "inflation_pressure_insights.csv"
 HOUSING_INSIGHTS_PATH = Path("data") / "clean" / "housing_pressure_insights.csv"
 POVERTY_INSIGHTS_PATH = Path("data") / "clean" / "poverty_pressure_insights.csv"
+INCOME_CAPACITY_INSIGHTS_PATH = Path("data") / "clean" / "income_capacity_insights.csv"
 OUTPUT_PATH = Path("data") / "clean" / "all_mvp_insights.csv"
 
 
@@ -28,8 +29,13 @@ def combine_insights() -> pd.DataFrame:
     poverty_df["insight_category"] = "poverty_pressure"
     poverty_df = poverty_df.rename(columns={"poverty_risk_rate": "metric_value"})
 
+    # Read income capacity insights
+    income_capacity_df = pd.read_csv(INCOME_CAPACITY_INSIGHTS_PATH)
+    income_capacity_df["insight_category"] = "income_capacity"
+    income_capacity_df = income_capacity_df.rename(columns={"median_equivalised_net_income": "metric_value"})
+
     # Combine the dataframes
-    combined_df = pd.concat([inflation_df, housing_df, poverty_df], ignore_index=True)
+    combined_df = pd.concat([inflation_df, housing_df, poverty_df, income_capacity_df], ignore_index=True)
 
     # Select and order the final columns
     final_columns = [

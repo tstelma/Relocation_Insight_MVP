@@ -47,3 +47,19 @@ datasets:
       sex: T
       age: TOTAL
       lang: en
+
+  income_capacity:
+    source: eurostat
+    dataset_code: ilc_di03
+    frequency: yearly
+    geography_level: country
+    update_job: yearly
+    used_for:
+      - income_capacity
+    filters:
+      freq: A
+      unit: PPS
+      indic_il: MED_E
+      sex: T
+      age: TOTAL
+      lang: en
