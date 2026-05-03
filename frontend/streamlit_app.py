@@ -171,6 +171,24 @@ def render_research_checklist(country_data: pd.DataFrame) -> None:
     st.markdown("\n".join(f"- {item}" for item in checklist))
 
 
+def render_data_freshness_note(country_data: pd.DataFrame) -> None:
+    periods = [
+        str(value).strip()
+        for value in country_data["time_period"].dropna().unique()
+        if str(value).strip()
+    ]
+    if not periods:
+        st.markdown("*Latest data period used: unavailable*")
+        return
+
+    unique_periods = sorted(set(periods))
+    latest_period = unique_periods[-1]
+    if len(unique_periods) > 1:
+        st.markdown(f"*Latest data period used: {latest_period}. Some indicators may use earlier available periods.*")
+    else:
+        st.markdown(f"*Latest data period used: {latest_period}*")
+
+
 def render_country_profile(country_data: pd.DataFrame, selected_country: str) -> None:
     overall_pressure = get_overall_pressure(country_data)
 
@@ -179,6 +197,7 @@ def render_country_profile(country_data: pd.DataFrame, selected_country: str) ->
     st.markdown(f"**Overall pressure snapshot:** {overall_pressure}")
     render_key_risk_driver(country_data)
     render_research_checklist(country_data)
+    render_data_freshness_note(country_data)
 
     indicator_categories = [
         "inflation_pressure",
