@@ -10,12 +10,13 @@ from extract.fetch_eurostat import fetch_dataset
 from transform.parse_eurostat import parse_single_geo_time_series
 from transform.calculate_hicp_metrics import calculate_annual_inflation_rate
 from utils.config_loader import load_yaml_config
-
+from insights.generate_inflation_insights import generate_inflation_insight_cards
 
 CLEAN_DATA_DIR = BASE_DIR / "data" / "clean"
 
 HICP_INDEX_OUTPUT_PATH = CLEAN_DATA_DIR / "hicp_index_mvp_countries.csv"
 HICP_INFLATION_OUTPUT_PATH = CLEAN_DATA_DIR / "hicp_annual_inflation_mvp_countries.csv"
+INFLATION_INSIGHTS_OUTPUT_PATH = CLEAN_DATA_DIR / "inflation_pressure_insights.csv"
 
 
 def fetch_hicp_for_all_countries() -> pd.DataFrame:
@@ -68,3 +69,9 @@ if __name__ == "__main__":
         .groupby("country_code")
         .tail(1)[["country_code", "time_period", "annual_inflation_rate"]]
     )
+
+    insights_df = generate_inflation_insight_cards(HICP_INFLATION_OUTPUT_PATH)
+    insights_df.to_csv(INFLATION_INSIGHTS_OUTPUT_PATH, index=False)
+
+    print(f"\nSaved inflation insight cards to: {INFLATION_INSIGHTS_OUTPUT_PATH}")
+    print(insights_df[["country_code", "country_name", "title", "pressure_label"]])

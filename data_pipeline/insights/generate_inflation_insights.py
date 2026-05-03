@@ -8,6 +8,7 @@ sys.path.append(str(BASE_DIR / "data_pipeline"))
 
 from utils.config_loader import load_yaml_config
 
+
 INPUT_PATH = Path("data") / "clean" / "hicp_annual_inflation_mvp_countries.csv"
 OUTPUT_PATH = Path("data") / "clean" / "inflation_pressure_insights.csv"
 
@@ -74,14 +75,15 @@ def create_why_it_matters(pressure_label: str) -> str:
     return "The available data is not enough to explain inflation pressure clearly."
 
 
-if __name__ == "__main__":
-    df = pd.read_csv(INPUT_PATH)
+def generate_inflation_insight_cards(input_path: Path = INPUT_PATH) -> pd.DataFrame:
+    df = pd.read_csv(input_path)
+    df["time_period"] = pd.to_datetime(df["time_period"])
+
     countries_config = load_yaml_config("countries.yml")
     country_name_map = {
         country["code"]: country["name"]
         for country in countries_config["countries"]
     }
-    df["time_period"] = pd.to_datetime(df["time_period"])
 
     latest_df = (
         df.sort_values("time_period")
@@ -89,6 +91,7 @@ if __name__ == "__main__":
         .tail(1)
         .copy()
     )
+
     latest_df["country_name"] = latest_df["country_code"].map(country_name_map)
 
     latest_df["pressure_label"] = latest_df["annual_inflation_rate"].apply(
@@ -127,6 +130,11 @@ if __name__ == "__main__":
         ]
     ]
 
+    return result
+
+
+if __name__ == "__main__":
+    result = generate_inflation_insight_cards()
     result.to_csv(OUTPUT_PATH, index=False)
 
     print(result[["country_code", "country_name", "title", "main_message", "confidence_level"]])
