@@ -210,6 +210,19 @@ def main():
     st.subheader("Comparison summary")
     inflation_better = comparison_rows[0]["Better country"]
     housing_better = comparison_rows[1]["Better country"]
+    inflation_diff = None if from_inflation is None or to_inflation is None else abs(to_inflation - from_inflation)
+    housing_diff = None if from_housing is None or to_housing is None else abs(to_housing - from_housing)
+
+    if inflation_diff is not None and housing_diff is not None and inflation_diff < 0.5 and housing_diff < 0.5:
+        tradeoff_label = "No major difference"
+    elif inflation_better == housing_better and inflation_better not in ["Equal", "Data unavailable"]:
+        tradeoff_label = "Clear advantage"
+    elif inflation_better not in ["Equal", "Data unavailable"] and housing_better not in ["Equal", "Data unavailable"] and inflation_better != housing_better:
+        tradeoff_label = "Mixed trade-off"
+    else:
+        tradeoff_label = "Mixed trade-off"
+
+    st.write(f"**Trade-off label:** {tradeoff_label}")
 
     if inflation_better == housing_better and inflation_better not in ["Equal", "Data unavailable"]:
         summary_text = f"{inflation_better} shows lower pressure across both tracked indicators."
