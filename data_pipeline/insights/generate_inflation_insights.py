@@ -18,14 +18,54 @@ def classify_inflation_pressure(rate: float) -> str:
     return "Very High"
 
 
-def create_message(country_code: str, rate: float, pressure_label: str) -> str:
+def create_title(pressure_label: str) -> str:
+    if pressure_label == "Low":
+        return "Inflation pressure looks low"
+    if pressure_label == "Moderate":
+        return "Inflation pressure is noticeable"
+    if pressure_label == "High":
+        return "Inflation pressure is high"
+    if pressure_label == "Very High":
+        return "Inflation pressure is very high"
+    return "Inflation pressure is unclear"
+
+
+def create_main_message(rate: float, pressure_label: str) -> str:
     if pd.isna(rate):
-        return f"{country_code}: Inflation pressure could not be calculated."
+        return "Annual inflation could not be calculated for the latest period."
 
     return (
-        f"{country_code}: Annual inflation is {rate:.2f}%, "
-        f"which indicates {pressure_label.lower()} inflation pressure."
+        f"Latest annual inflation is {rate:.2f}%, "
+        f"which suggests {pressure_label.lower()} inflation pressure."
     )
+
+
+def create_why_it_matters(pressure_label: str) -> str:
+    if pressure_label == "Low":
+        return (
+            "Lower inflation pressure usually means everyday prices are rising more slowly, "
+            "which can make financial planning feel more stable."
+        )
+
+    if pressure_label == "Moderate":
+        return (
+            "Moderate inflation still affects everyday life. Even if income rises, "
+            "people may feel pressure when prices keep moving upward."
+        )
+
+    if pressure_label == "High":
+        return (
+            "High inflation can reduce purchasing power quickly, especially when wages "
+            "do not grow at the same pace."
+        )
+
+    if pressure_label == "Very High":
+        return (
+            "Very high inflation can create strong financial stress because everyday costs "
+            "change faster than many households can adjust."
+        )
+
+    return "The available data is not enough to explain inflation pressure clearly."
 
 
 if __name__ == "__main__":
@@ -43,14 +83,22 @@ if __name__ == "__main__":
         classify_inflation_pressure
     )
 
-    latest_df["insight_message"] = latest_df.apply(
-        lambda row: create_message(
-            row["country_code"],
+    latest_df["title"] = latest_df["pressure_label"].apply(create_title)
+
+    latest_df["main_message"] = latest_df.apply(
+        lambda row: create_main_message(
             row["annual_inflation_rate"],
             row["pressure_label"],
         ),
         axis=1,
     )
+
+    latest_df["why_it_matters"] = latest_df["pressure_label"].apply(
+        create_why_it_matters
+    )
+
+    latest_df["confidence_level"] = "High"
+    latest_df["source"] = "Eurostat HICP"
 
     result = latest_df[
         [
@@ -58,11 +106,15 @@ if __name__ == "__main__":
             "time_period",
             "annual_inflation_rate",
             "pressure_label",
-            "insight_message",
+            "title",
+            "main_message",
+            "why_it_matters",
+            "confidence_level",
+            "source",
         ]
     ]
 
     result.to_csv(OUTPUT_PATH, index=False)
 
-    print(result)
-    print(f"\nSaved inflation insights to: {OUTPUT_PATH}")
+    print(result[["country_code", "title", "main_message", "confidence_level"]])
+    print(f"\nSaved inflation insight cards to: {OUTPUT_PATH}")
