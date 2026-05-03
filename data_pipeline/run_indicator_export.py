@@ -80,6 +80,19 @@ def run_indicator_export(indicator_key: str) -> None:
         print("\nHousing pressure insights preview:")
         print(insights_df[["country_code", "country_name", "title", "housing_overburden_rate", "pressure_label"]])
 
+    # Generate poverty insights if poverty_risk was exported
+    if indicator_key == "poverty_risk":
+        from insights.generate_poverty_insights import generate_poverty_insight_cards
+
+        print(f"\nGenerating poverty pressure insights...")
+        insights_df = generate_poverty_insight_cards(output_path)
+        insights_output_path = CLEAN_DATA_DIR / "poverty_pressure_insights.csv"
+        insights_df.to_csv(insights_output_path, index=False)
+
+        print(f"Saved poverty pressure insights to: {insights_output_path}")
+        print("\nPoverty pressure insights preview:")
+        print(insights_df[["country_code", "country_name", "title", "poverty_risk_rate", "pressure_label"]])
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Export indicator data for all MVP countries")
