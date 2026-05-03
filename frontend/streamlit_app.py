@@ -202,6 +202,29 @@ def render_methodology_notes() -> None:
         )
 
 
+def render_comparison_verdict(comparison_df: pd.DataFrame, country_a: str, country_b: str) -> None:
+    if comparison_df.empty:
+        st.write("_Comparison verdict: insufficient data for a directional signal based only on the current MVP indicators._")
+        return
+
+    a_wins = (comparison_df["Better country"] == country_a).sum()
+    b_wins = (comparison_df["Better country"] == country_b).sum()
+    valid_rows = comparison_df[comparison_df["Better country"].isin([country_a, country_b, "Equal"])]
+
+    if valid_rows.empty:
+        st.write("_Comparison verdict: insufficient data for a directional signal based only on the current MVP indicators._")
+        return
+
+    if a_wins > b_wins:
+        verdict = f"{country_a} has an overall MVP pressure advantage across the available indicators."
+    elif b_wins > a_wins:
+        verdict = f"{country_b} has an overall MVP pressure advantage across the available indicators."
+    else:
+        verdict = "The comparison is mixed across the available indicators."
+
+    st.write(f"**Comparison verdict:** {verdict} _This is directional only and based only on the current MVP indicators._")
+
+
 def render_country_profile(country_data: pd.DataFrame, selected_country: str) -> None:
     overall_pressure = get_overall_pressure(country_data)
 
@@ -483,6 +506,7 @@ def main():
         summary_text = "This comparison shows a mixed trade-off across the tracked indicators."
 
     st.write(summary_text)
+    render_comparison_verdict(comparison_df, from_country, to_country)
     st.info(
         "This MVP currently compares inflation pressure, housing burden, and poverty risk. "
         "It does not yet include salary levels, taxes, career opportunities, language, culture, lifestyle preferences, healthcare, "
