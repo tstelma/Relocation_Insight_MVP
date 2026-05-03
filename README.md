@@ -22,6 +22,20 @@ For each indicator, the viewer shows:
 - Two-country comparison with trade-off analysis
 - Plain-language summaries
 
+## App Preview
+
+### Country Profile
+![Country Profile](docs/screenshots/country_profile.png)
+*Individual country assessment showing pressure indicators, income capacity, and next steps.*
+
+### Country Comparison
+![Country Comparison](docs/screenshots/country_comparison.png)
+*Side-by-side comparison of two countries with trade-off analysis.*
+
+### Methodology Notes
+![Methodology Notes](docs/screenshots/methodology_notes.png)
+*Data sources and methodology details for transparency.*
+
 ## Quick Start
 
 ### Setup
