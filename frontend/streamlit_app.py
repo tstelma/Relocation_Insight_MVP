@@ -202,7 +202,7 @@ def render_country_profile_export(country_data: pd.DataFrame, selected_country: 
     filename = f"{safe_name}_relocation_pressure_profile.csv"
 
     st.download_button(
-        label="Download country profile CSV",
+        label="Export selected country profile",
         data=csv_bytes,
         file_name=filename,
         mime="text/csv",
@@ -326,9 +326,10 @@ def main():
         return
 
     st.header(f"📊 Insights for {selected_country}")
+    st.divider()
 
     # Country pressure summary
-    st.subheader("Country pressure summary")
+    st.subheader("Country pressure snapshot")
     total_insights = len(country_data)
     high_pressure_count = country_data["pressure_label"].isin(["High", "Very High"]).sum()
     inflation_value = country_data.loc[
@@ -395,7 +396,9 @@ def main():
         f"{poverty_value:.2f}" if pd.notna(poverty_value) else "N/A"
     )
 
+    st.divider()
     render_country_profile(country_data, selected_country)
+    st.divider()
 
     # Display insight cards
     for _, row in country_data.iterrows():
@@ -440,7 +443,7 @@ def main():
             st.divider()
 
     # Compare two countries
-    st.subheader("Compare two countries")
+    st.subheader("Country comparison")
     compare_col1, compare_col2 = st.columns(2)
     from_country = compare_col1.selectbox(
         "From country",
@@ -498,10 +501,11 @@ def main():
 
     comparison_df = pd.DataFrame(comparison_rows)
     st.table(comparison_df)
-    st.write("Lower values suggest lower financial pressure for this metric.")
+    st.caption("Lower values suggest lower financial pressure for this metric.")
+    st.divider()
 
     # Comparison summary
-    st.subheader("Comparison summary")
+    st.subheader("Comparison summary and verdict")
     inflation_better = comparison_rows[0]["Better country"]
     housing_better = comparison_rows[1]["Better country"]
     poverty_better = comparison_rows[2]["Better country"]
@@ -533,6 +537,7 @@ def main():
         "It does not yet include salary levels, taxes, career opportunities, language, culture, lifestyle preferences, healthcare, "
         "or personal circumstances."
     )
+    st.divider()
 
     # Raw data table
     st.header("📋 Raw Data")
