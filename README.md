@@ -1,13 +1,12 @@
 # Relocation Insight MVP
 
-Early MVP for exploring financial pressure insights across selected European countries.
+Early MVP for exploring financial pressure insights across 28 selected European countries.
 
-The current version uses Eurostat data to generate:
+The current version uses Eurostat data to generate insights across three key financial pressure indicators:
 
-- inflation pressure insights
-- housing pressure insights
-- combined MVP insight cards
-- a simple Streamlit viewer
+- **Inflation pressure** (annual inflation rate from HICP)
+- **Housing burden** (housing overburden rate)
+- **Poverty risk** (at-risk-of-poverty rate)
 
 ## Setup
 
@@ -16,43 +15,63 @@ Create and activate the virtual environment:
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate
+pip install -r requirements.txt
+```
+
 ## Current MVP functionality
 
+### Data Pipeline
 - Eurostat HICP inflation pipeline
 - Eurostat housing overburden export
-- Inflation pressure insight cards
-- Housing pressure insight cards
-- Combined insights export
-- Streamlit viewer with country selector
-- Country pressure summary
-- Relative ranking context
+- Eurostat poverty risk export
+- Automatic insight card generation for all three indicators
+- Combined insights export (unified standardized format)
+
+### Streamlit Viewer
+- Country selector with expandable insight cards
+- Country pressure summary with metric values
+- Overall pressure snapshot (pattern-based assessment)
+- Relative ranking context within each indicator
 - Two-country comparison mode
-- Plain-language comparison summary
-- Trade-off label
-- MVP limitation disclaimer
+- Multi-metric trade-off analysis
+- Plain-language comparison summaries
+- Disclaimer about excluded factors
 
 ## Run commands
 
 Run the complete MVP pipeline:
 
-`powershell
-python data_pipeline\run_mvp_pipeline.py
-` 
+```powershell
+python data_pipeline/run_mvp_pipeline.py
+```
 
 Launch the Streamlit viewer:
 
-`powershell
-streamlit run frontend\streamlit_app.py
-` 
+```powershell
+streamlit run frontend/streamlit_app.py
+```
 
-## Current indicators
+## Current indicators and coverage
 
-- Inflation pressure
-- Housing burden
+**Indicators:**
+- Inflation pressure (Annual inflation rate, %)
+- Housing burden (Housing overburden rate, %)
+- Poverty risk (At-risk-of-poverty rate, %)
 
-## Current limitations
+**Country coverage:** 28 European countries selected based on available Eurostat data
 
-- Country-level only
-- Selected countries only
-- No salary/tax/career/lifestyle factors yet
-- Not a full relocation recommendation engine yet
+## Current limitations and excluded factors
+
+This MVP does **not yet include**:
+- Salary levels and wage growth
+- Taxes and social benefits
+- Career opportunities and job markets
+- Language and cultural factors
+- Lifestyle preferences
+- Healthcare systems and quality
+- Personal circumstances and preferences
+- Sub-national regional variations
+- Cost of living beyond housing
+- Employment rates or job security
+
+This is an early-stage exploration tool, not a comprehensive relocation recommendation engine.
