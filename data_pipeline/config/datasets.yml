@@ -30,3 +30,20 @@ datasets:
       age: TOTAL
       sex: T
       lang: en
+
+  poverty_risk:
+    source: eurostat
+    dataset_code: ilc_li02
+    frequency: yearly
+    geography_level: country
+    update_job: yearly
+    used_for:
+      - poverty_context
+      - economic_security
+    filters:
+      freq: A
+      unit: PC
+      indic_il: LI_R_MD60
+      sex: T
+      age: TOTAL
+      lang: en
