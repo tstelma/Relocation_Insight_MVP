@@ -6,16 +6,61 @@ from pathlib import Path
 # Page configuration
 st.set_page_config(
     page_title="Relocation Insight MVP",
-    page_icon="🏠",
     layout="wide"
 )
 
 # Data loading
 DATA_PATH = Path("data") / "clean" / "all_mvp_insights.csv"
+TIMESERIES_DATA_PATH = Path("data") / "clean" / "all_mvp_timeseries.csv"
+
+INDICATOR_LABELS = {
+    "inflation_pressure": "Inflation pressure",
+    "housing_pressure": "Housing pressure",
+    "poverty_pressure": "Poverty pressure",
+    "income_capacity": "Income capacity",
+}
 
 @st.cache_data
 def load_insights():
     return pd.read_csv(DATA_PATH)
+
+
+@st.cache_data
+def load_timeseries():
+    if not TIMESERIES_DATA_PATH.exists():
+        return pd.DataFrame()
+    return pd.read_csv(TIMESERIES_DATA_PATH)
+
+
+def apply_visual_style() -> None:
+    st.markdown(
+        """
+        <style>
+        .block-container {
+            padding-top: 2rem;
+            padding-bottom: 3rem;
+            max-width: 1180px;
+        }
+        div[data-testid="stMetric"] {
+            background: var(--secondary-background-color, rgba(128, 128, 128, 0.08));
+            border: 1px solid rgba(128, 128, 128, 0.24);
+            border-radius: 8px;
+            padding: 0.75rem 0.9rem;
+            color: var(--text-color, inherit);
+        }
+        div[data-testid="stMetric"] * {
+            color: inherit;
+        }
+        div[data-testid="stAlert"] {
+            border-radius: 8px;
+        }
+        h1, h2, h3 {
+            letter-spacing: 0;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def to_ordinal(value: int) -> str:
@@ -71,6 +116,21 @@ def format_metric_value(category: str, value: float | None) -> str:
     if category == "income_capacity":
         return f"{value:,.0f} PPS"
     return format_percentage(value)
+
+
+def format_period_for_display(value) -> str:
+    if pd.isna(value):
+        return ""
+
+    text = str(value).strip()
+    if not text:
+        return ""
+
+    year_match = pd.Series([text]).str.extract(r"(\d{4})", expand=False).iloc[0]
+    if pd.notna(year_match):
+        return str(year_match)
+
+    return text
 
 
 def is_higher_better(category: str) -> bool:
@@ -137,14 +197,15 @@ def get_key_risk_driver(country_data: pd.DataFrame):
 def render_key_risk_driver(country_data: pd.DataFrame) -> None:
     best = get_key_risk_driver(country_data)
     if best is None:
-        st.caption("**Key pressure:** Data unavailable")
+        st.caption("Data unavailable")
         return
 
     metric_label = get_metric_label(best['insight_category'])
     metric_val = format_metric_value(best['insight_category'], best["metric_value"])
     pressure = best['pressure_label']
     
-    st.markdown(f"**Highest pressure:** {metric_label} ({metric_val}) — {pressure}")
+    st.metric(metric_label, metric_val)
+    st.caption(f"Key pressure signal: {pressure}")
     
     explanations = {
         "Low": "Pressure level is low.",
@@ -164,7 +225,8 @@ def render_income_capacity_signal(country_data: pd.DataFrame) -> None:
     metric_val = format_metric_value(row['insight_category'], row["metric_value"])
     level = row['pressure_label']
     
-    st.markdown(f"**Income capacity:** {metric_val} — {level}")
+    st.metric("Income capacity", metric_val)
+    st.caption(f"Capacity signal: {level}")
     st.caption("Higher values indicate stronger local purchasing power.")
 
 
@@ -204,20 +266,20 @@ def render_research_checklist(country_data: pd.DataFrame) -> None:
                 "Assess job market stability and healthcare access",
             ]
 
-    st.markdown(f"**Suggested next checks**\n" + "\n".join(f"• {item}" for item in checklist))
+    st.markdown("\n".join(f"- {item}" for item in checklist))
 
 
 def render_data_freshness_note(country_data: pd.DataFrame) -> None:
     periods = [
-        str(value).strip()
+        format_period_for_display(value)
         for value in country_data["time_period"].dropna().unique()
-        if str(value).strip()
+        if format_period_for_display(value)
     ]
     if not periods:
         st.markdown("*Latest data period used: unavailable*")
         return
 
-    unique_periods = sorted(set(periods))
+    unique_periods = sorted(set(periods), key=lambda value: int(value) if value.isdigit() else value)
     latest_period = unique_periods[-1]
     if len(unique_periods) > 1:
         st.markdown(f"*Latest data period used: {latest_period}. Some indicators may use earlier available periods.*")
@@ -260,9 +322,8 @@ def render_pressure_signals(country_data: pd.DataFrame) -> None:
         metric_label = get_metric_label(category)
         metric_val = format_metric_value(category, row["metric_value"])
         with cols[idx]:
-            st.markdown(f"**{metric_label}**")
-            st.markdown(f"**{metric_val}**")
-            st.caption(f"{row['pressure_label']}")
+            st.metric(metric_label, metric_val)
+            st.caption(f"Pressure signal: {row['pressure_label']}")
 
 
 def render_methodology_notes() -> None:
@@ -280,6 +341,94 @@ def render_methodology_notes() -> None:
             "Pressure labels are simplified MVP categories for early-stage signals only, "
             "not detailed economic diagnostics. Country comparisons are signals, not full relocation recommendations."
         )
+
+
+def render_historical_trends(timeseries_df: pd.DataFrame, selected_country: str) -> None:
+    st.header("Historical trends")
+    st.caption(
+        "Historical charts are shown for context only. Trend interpretation will be added later with data-quality checks."
+    )
+
+    if timeseries_df.empty:
+        st.info("Historical trend data is not available yet. Run the MVP pipeline to create all_mvp_timeseries.csv.")
+        return
+
+    required_columns = {
+        "country_name",
+        "indicator",
+        "time_period",
+        "metric_value",
+        "unit",
+    }
+    missing_columns = required_columns - set(timeseries_df.columns)
+    if missing_columns:
+        st.warning("Historical trend data is unavailable because the time-series file has an unexpected schema.")
+        return
+
+    countries = sorted(timeseries_df["country_name"].dropna().unique())
+    if not countries:
+        st.info("Historical trend data is empty.")
+        return
+
+    default_country_index = countries.index(selected_country) if selected_country in countries else 0
+    available_indicators = [
+        indicator
+        for indicator in INDICATOR_LABELS
+        if indicator in set(timeseries_df["indicator"].dropna())
+    ]
+
+    if not available_indicators:
+        st.info("No historical indicators are available.")
+        return
+
+    trend_col_country, trend_col_indicator = st.columns(2)
+    with trend_col_country:
+        trend_country = st.selectbox(
+            "Country",
+            countries,
+            index=default_country_index,
+            key="trend_country",
+        )
+
+    with trend_col_indicator:
+        selected_label = st.selectbox(
+            "Indicator",
+            [INDICATOR_LABELS[indicator] for indicator in available_indicators],
+            key="trend_indicator",
+        )
+
+    trend_indicator = next(
+        indicator
+        for indicator in available_indicators
+        if INDICATOR_LABELS[indicator] == selected_label
+    )
+
+    chart_df = timeseries_df.loc[
+        (timeseries_df["country_name"] == trend_country) &
+        (timeseries_df["indicator"] == trend_indicator),
+        ["time_period", "metric_value", "unit"],
+    ].copy()
+
+    if chart_df.empty:
+        st.info("No historical rows are available for this country and indicator.")
+        return
+
+    chart_df["time_period"] = pd.to_numeric(chart_df["time_period"], errors="coerce")
+    chart_df["metric_value"] = pd.to_numeric(chart_df["metric_value"], errors="coerce")
+    chart_df = chart_df.dropna(subset=["time_period"]).sort_values("time_period")
+
+    if chart_df.empty or chart_df["metric_value"].dropna().empty:
+        st.info("Historical rows exist, but metric values are missing for this selection.")
+        return
+
+    unit = chart_df["unit"].dropna().iloc[-1] if not chart_df["unit"].dropna().empty else "value"
+    st.caption(f"Unit: {unit}")
+    st.line_chart(
+        chart_df,
+        x="time_period",
+        y="metric_value",
+        use_container_width=True,
+    )
 
 
 def render_comparison_verdict(comparison_df: pd.DataFrame, country_a: str, country_b: str) -> None:
@@ -308,42 +457,31 @@ def render_comparison_verdict(comparison_df: pd.DataFrame, country_a: str, count
 def render_country_profile(country_data: pd.DataFrame, selected_country: str) -> None:
     overall_pressure = get_overall_pressure(country_data)
 
-    # Header with export button
+    st.header("Country Profile")
+
     col_left, col_right = st.columns([3, 1])
     with col_left:
-        st.markdown(f"## {selected_country}")
+        st.subheader(selected_country)
         st.markdown(f"**Overall assessment:** {overall_pressure}")
     with col_right:
         render_country_profile_export(country_data, selected_country)
 
-    st.divider()
-    
-    # Pressure indicators section
-    st.markdown("### Pressure Indicators")
+    st.markdown("#### Key signals")
     render_pressure_signals(country_data)
-    
-    st.divider()
-    
-    # Key insights section
-    col_key, col_income = st.columns(2)
-    
+
+    col_key, col_income, col_next = st.columns([1, 1, 1.2])
     with col_key:
-        st.markdown("### Key Pressure")
+        st.markdown("#### Key risk driver")
         render_key_risk_driver(country_data)
-    
+
     with col_income:
-        st.markdown("### Income Capacity")
+        st.markdown("#### Income capacity")
         render_income_capacity_signal(country_data)
-    
-    st.divider()
-    
-    # Next steps section
-    st.markdown("### Next Steps")
-    render_research_checklist(country_data)
-    
-    st.divider()
-    
-    # Interpretation and notes
+
+    with col_next:
+        st.markdown("#### Suggested next checks")
+        render_research_checklist(country_data)
+
     interpretation_map = {
         "Generally low pressure": "All tracked indicators are low, suggesting a stable financial profile.",
         "Price-stable, social risk visible": "Prices are relatively stable, but poverty risk is showing some social pressure.",
@@ -353,17 +491,48 @@ def render_country_profile(country_data: pd.DataFrame, selected_country: str) ->
         "Broad pressure risk": "Multiple indicators show high pressure, suggesting broad financial stress.",
         "Uneven pressure profile": "The country shows a mixed profile across inflation, housing, and poverty pressures."
     }
-    st.markdown("**Profile interpretation:**")
-    st.write(interpretation_map.get(overall_pressure, "This country has a mixed pressure profile across the tracked indicators."))
-    
-    # Data freshness and methodology (subtle)
+
+    with st.expander("Profile interpretation", expanded=False):
+        st.write(interpretation_map.get(overall_pressure, "This country has a mixed pressure profile across the tracked indicators."))
+
     render_data_freshness_note(country_data)
-    render_methodology_notes()
+
+
+def render_detailed_insights(country_data: pd.DataFrame) -> None:
+    st.header("Detailed indicator insights")
+    st.caption("Each indicator keeps the headline signal visible. Longer context is collapsed to keep the page easier to scan.")
+
+    for _, row in country_data.iterrows():
+        metric_label = get_metric_label(row["insight_category"])
+        metric_value = format_metric_value(row["insight_category"], row["metric_value"])
+        category_label = row["insight_category"].replace("_", " ").title()
+
+        with st.container():
+            col_title, col_value, col_label = st.columns([2.4, 1, 1])
+            with col_title:
+                st.markdown(f"**{row['title']}**")
+                st.caption(category_label)
+            with col_value:
+                st.metric(metric_label, metric_value)
+            with col_label:
+                st.markdown(f"**{row['pressure_label']}**")
+                st.caption(row["relative_rank_message"])
+
+            st.write(row["main_message"])
+
+            with st.expander("Why it matters and source", expanded=False):
+                st.write(row["why_it_matters"])
+                st.caption(f"Source: {row['source']}")
+                st.caption(f"Confidence: {row['confidence_level']}")
+
+            st.divider()
 
 
 def main():
-    st.title("🏠 Relocation Insight MVP")
-    st.markdown("*Explore early financial pressure insights for selected European countries.*")
+    apply_visual_style()
+
+    st.title("Relocation Insight MVP")
+    st.caption("Early-stage research signals for selected European countries, based on current MVP indicators.")
 
     # Load data
     try:
@@ -372,6 +541,8 @@ def main():
         st.error(f"Data file not found: {DATA_PATH}")
         st.info("Please run the MVP pipeline first: `python data_pipeline/run_mvp_pipeline.py`")
         return
+
+    timeseries_df = load_timeseries()
 
     # Calculate relative ranking across all countries by category
     def rank_group(group: pd.DataFrame) -> pd.Series:
@@ -404,68 +575,21 @@ def main():
         st.warning(f"No data available for {selected_country}")
         return
 
-    st.header(f"📊 Insights for {selected_country}")
-    st.divider()
-
-    # Simplified pressure snapshot summary
     high_pressure_count = country_data["pressure_label"].isin(["High", "Very High"]).sum()
     high_pressure_text = f"{high_pressure_count} indicator(s) show high/very high pressure" if high_pressure_count > 0 else "All indicators are low/moderate pressure"
-    st.markdown(f"**Quick overview:** {high_pressure_text}")
+    st.caption(f"Quick overview: {high_pressure_text}")
     st.divider()
     render_country_profile(country_data, selected_country)
     st.divider()
 
-    # Detailed insight cards section
-    st.header("📈 Detailed Indicator Insights")
+    render_historical_trends(timeseries_df, selected_country)
     st.divider()
 
-    # Display insight cards
-    for _, row in country_data.iterrows():
-        with st.container():
-            # Card header
-            col1, col2, col3 = st.columns([2, 1, 1])
-            with col1:
-                st.subheader(f"📈 {row['title']}")
-            with col2:
-                st.caption(f"Category: {row['insight_category'].replace('_', ' ').title()}")
-            with col3:
-                pressure_color = {
-                    'Low': '🟢',
-                    'Moderate': '🟡',
-                    'High': '🟠',
-                    'Very High': '🔴'
-                }.get(row['pressure_label'], '⚪')
-                st.caption(f"{pressure_color} {row['pressure_label']}")
-
-            # Metric value
-            st.metric(
-                label=get_metric_label(row['insight_category']),
-                value=format_metric_value(row['insight_category'], row['metric_value'])
-            )
-
-            # Main message
-            st.info(row['main_message'])
-            st.write(row['relative_rank_message'])
-
-            # Why it matters
-            with st.expander("💡 Why it matters"):
-                st.write(row['why_it_matters'])
-
-            # Source and confidence
-            col1, col2 = st.columns(2)
-            with col1:
-                st.caption(f"📊 Source: {row['source']}")
-            with col2:
-                confidence_icon = "✅" if row['confidence_level'] == "High" else "⚠️"
-                st.caption(f"{confidence_icon} Confidence: {row['confidence_level']}")
-
-            st.divider()
-
+    render_detailed_insights(country_data)
     st.divider()
 
     # Compare two countries
-    st.header("🔄 Country Comparison")
-    st.divider()
+    st.header("Country comparison")
     
     # Country selectors
     comp_col1, comp_col2 = st.columns(2)
@@ -535,7 +659,11 @@ def main():
         })
 
     comparison_df = pd.DataFrame(comparison_rows)
-    st.table(comparison_df)
+    st.dataframe(
+        comparison_df,
+        use_container_width=True,
+        hide_index=True,
+    )
     st.caption("Lower values indicate lower pressure; higher values indicate stronger income capacity.")
     st.divider()
 
@@ -559,7 +687,7 @@ def main():
     else:
         tradeoff_label = "Mixed trade-off"
 
-    st.write(f"**Trade-off label:** {tradeoff_label}")
+    st.markdown(f"**Trade-off label:** {tradeoff_label}")
 
     if (inflation_better == housing_better == poverty_better == income_better and
         inflation_better not in ["Equal", "Data unavailable"]):
@@ -569,20 +697,23 @@ def main():
 
     st.write(summary_text)
     render_comparison_verdict(comparison_df, from_country, to_country)
-    st.info(
-        "This MVP currently compares inflation pressure, housing burden, and poverty risk. "
-        "It does not yet include salary levels, taxes, career opportunities, language, culture, lifestyle preferences, healthcare, "
-        "or personal circumstances."
-    )
     st.divider()
 
-    # Raw data table
-    st.header("📋 Raw Data")
-    st.dataframe(
-        country_data,
-        use_container_width=True,
-        hide_index=True
-    )
+    st.header("Methodology / Disclaimer")
+    render_methodology_notes()
+    with st.expander("MVP limitations", expanded=False):
+        st.write(
+            "This MVP currently compares inflation pressure, housing burden, poverty risk, and income capacity. "
+            "It does not yet include salary levels, taxes, career opportunities, language, culture, lifestyle preferences, healthcare, "
+            "or personal circumstances."
+        )
+
+    with st.expander("Raw data", expanded=False):
+        st.dataframe(
+            country_data,
+            use_container_width=True,
+            hide_index=True
+        )
 
 if __name__ == "__main__":
     main()
