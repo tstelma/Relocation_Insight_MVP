@@ -3,7 +3,7 @@
 
 ## Overview
 
-The MVP pipeline has four sequential stages that fetch Eurostat data, generate pressure insights, combine them into a unified format, and feed the result to the Streamlit viewer.
+The MVP pipeline has five sequential stages that fetch Eurostat data, generate insights, combine them into a unified format, and feed the result to the Streamlit viewer.
 
 ## Pipeline Stages
 
@@ -50,14 +50,37 @@ The MVP pipeline has four sequential stages that fetch Eurostat data, generate p
 - `data/clean/poverty_risk_mvp_countries.csv` — Raw poverty risk data
 - `data/clean/poverty_pressure_insights.csv` — Poverty insight cards
 
-### Stage 4: Combined Insights Export
+### Stage 4: Income Capacity Export
+
+**Script:** `data_pipeline/run_indicator_export.py income_capacity`
+
+**Indicator:** Income Capacity (the fourth MVP indicator)
+
+**Data Source:** Eurostat ilc_di03 dataset
+
+**Metric:** Median equivalised net income in Purchasing Power Standard (PPS)
+
+**Interpretation:** Higher values indicate stronger income capacity. Unlike inflation_pressure, housing_pressure, and poverty_pressure, income_capacity is a supporting signal rather than a pressure metric.
+
+**What it does:**
+1. Exports median equivalised net income data from Eurostat ilc_di03
+2. Applies Purchasing Power Standard (PPS) to enable income comparisons across countries with different price levels
+3. Classifies each country's income capacity as a balancing signal for the pressure metrics
+4. Generates income capacity insight cards
+
+**Outputs:**
+- `data/clean/income_capacity_mvp_countries.csv` — Raw income capacity data in PPS
+- `data/clean/income_capacity_insights.csv` — Income capacity insight cards
+- `data/clean/all_mvp_insights.csv` — Included in combined output
+
+### Stage 5: Combined Insights Export
 
 **Script:** `data_pipeline/insights/combine_insights.py`
 
 **What it does:**
-1. Reads all three insight card files
+1. Reads all four insight card files
 2. Standardizes them into a unified format
-3. Adds `insight_category` field (inflation_pressure, housing_pressure, poverty_pressure)
+3. Adds `insight_category` field (inflation_pressure, housing_pressure, poverty_pressure, income_capacity)
 4. Renames metric columns to uniform `metric_value`
 5. Ensures all rows have the same column structure
 
@@ -66,22 +89,22 @@ The MVP pipeline has four sequential stages that fetch Eurostat data, generate p
 
 **Unified Column Structure:**
 ```
-insight_category       (inflation_pressure | housing_pressure | poverty_pressure)
+insight_category       (inflation_pressure | housing_pressure | poverty_pressure | income_capacity)
 country_code           (AT, BE, BG, etc.)
 country_name           (Austria, Belgium, Bulgaria, etc.)
 time_period            (Year or date range)
-metric_value           (Normalized percentage value)
+metric_value           (Normalized percentage value or PPS for income capacity)
 pressure_label         (Low | Moderate | High | Very High)
 title                  (Human-readable insight title)
 main_message           (Key finding summary)
 why_it_matters         (Context and implications)
 confidence_level       (High | Medium | Low)
-source                 (Eurostat HICP / Eurostat SILC)
+source                 (Eurostat HICP / Eurostat SILC / Eurostat ilc_di03)
 ```
 
 ## Running the Pipeline
 
-**Execute all four stages:**
+**Execute all five stages:**
 ```powershell
 python data_pipeline/run_mvp_pipeline.py
 ```
@@ -90,7 +113,7 @@ The master pipeline script (`run_mvp_pipeline.py`) runs each stage sequentially,
 
 ## Streamlit Viewer
 
-**Input File:** `data/clean/all_mvp_insights.csv` (output from Stage 4)
+**Input File:** `data/clean/all_mvp_insights.csv` (output from Stage 5)
 
 **Viewer Features:**
 - **Country selector** — Dropdown to choose any of 28 countries
@@ -98,9 +121,11 @@ The master pipeline script (`run_mvp_pipeline.py`) runs each stage sequentially,
 - **Individual insight cards** — One card per indicator showing title, message, ranking, and source
 - **Relative ranking** — Shows where each country ranks within each indicator
 - **Overall pressure snapshot** — Pattern-based assessment: "Generally low pressure", "Broad pressure risk", "Uneven pressure profile", etc.
-- **Two-country comparison** — Select two countries to compare all three metrics side-by-side
+- **Income capacity signal** — Displays median equivalised net income in PPS and balances the pressure-side view
+- **Two-country comparison** — Select two countries to compare all four metrics side-by-side
 - **Difference calculations** — Shows +/- differences for each metric
-- **Better country identification** — Identifies which country is better on each metric
+- **Better country identification** — Identifies which country is better on each metric, treating income capacity as higher-is-better
+- **Correct PPS formatting** — Shows income capacity values with PPS units rather than as a percent
 - **Trade-off labels** — "Clear advantage", "Mixed trade-off", or "No major difference"
 - **Plain-language summary** — Explains the comparison result in readable text
 - **MVP disclaimer** — Lists factors not included in this analysis
@@ -121,7 +146,9 @@ streamlit run frontend/streamlit_app.py
 │  (housing)       ↓
 ├─ SILC data ───→ [Stage 3: Poverty Export]
 │  (poverty)       ↓
-└─────────────────→ [Stage 4: Combine Insights]
+├─ ilc_di03 data ─→ [Stage 4: Income Capacity Export]
+│  (income_capacity) ↓
+└─────────────────→ [Stage 5: Combine Insights]
                       ↓
               all_mvp_insights.csv
                       ↓
