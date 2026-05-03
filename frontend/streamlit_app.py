@@ -235,6 +235,11 @@ def main():
         summary_text = "This comparison includes equal or unavailable values for one or both metrics."
 
     st.write(summary_text)
+    st.info(
+        "This MVP currently compares only inflation pressure and housing burden. "
+        "It does not yet include salary levels, taxes, career opportunities, language, culture, lifestyle preferences, healthcare, "
+        "or personal circumstances."
+    )
 
     # Raw data table
     st.header("📋 Raw Data")
