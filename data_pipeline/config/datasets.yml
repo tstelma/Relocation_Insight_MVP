@@ -1,0 +1,21 @@
+datasets:
+  inflation_hicp:
+    source: eurostat
+    dataset_code: prc_hicp_midx
+    frequency: monthly
+    geography_level: country
+    update_job: monthly
+    used_for:
+      - hidden_loss
+      - trend_direction
+      - cost_pressure
+
+  housing_overburden:
+    source: eurostat
+    dataset_code: ilc_lvho07a
+    frequency: yearly
+    geography_level: country
+    update_job: yearly
+    used_for:
+      - housing_reality_check
+      - relative_position

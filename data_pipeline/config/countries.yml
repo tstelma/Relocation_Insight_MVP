@@ -1,0 +1,32 @@
+countries:
+  - code: DE
+    name: Germany
+    currency: EUR
+
+  - code: PL
+    name: Poland
+    currency: PLN
+
+  - code: ES
+    name: Spain
+    currency: EUR
+
+  - code: PT
+    name: Portugal
+    currency: EUR
+
+  - code: NL
+    name: Netherlands
+    currency: EUR
+
+  - code: CZ
+    name: Czechia
+    currency: CZK
+
+  - code: FR
+    name: France
+    currency: EUR
+
+  - code: IT
+    name: Italy
+    currency: EUR
