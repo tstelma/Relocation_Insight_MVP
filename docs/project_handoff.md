@@ -12,8 +12,13 @@ Eurostat-based decision-support MVP for comparing European countries by financia
 - ✅ Python environment working
 - ✅ Git repo initialized
 - ✅ Eurostat API ingestion working
-- ✅ Master MVP pipeline working
+- ✅ Master MVP pipeline working (4 indicators)
 - ✅ Streamlit MVP viewer working
+- ✅ 4-indicator Eurostat-based Streamlit app complete
+- ✅ README includes app preview screenshots
+- ✅ Documentation updated for 4-indicator MVP
+- ✅ Backend pipeline works end-to-end
+- ✅ Frontend features complete and polished
 
 ## Current Indicators
 
@@ -201,3 +206,163 @@ relocation_insight_mvp/
 
 **Last Updated:** May 3, 2026  
 **Status:** MVP complete with three indicators, ready for next development phase
+
+
+# Relocation Insight MVP — Project Handoff
+
+## 1. Project Overview
+
+**Project Name:** Relocation Insight MVP
+
+**Current Stage:** Continue from **Stage 70**
+
+**Product Goal:**  
+A Eurostat-based decision-support MVP for comparing European countries using early-stage relocation pressure and income-capacity indicators.
+
+The app helps users compare countries based on financial/social pressure signals and purchasing-power-adjusted income capacity. It is not a full relocation recommendation engine.
+
+---
+
+## 2. Current Project Status
+
+The MVP is currently working end-to-end.
+
+Completed:
+
+- Python environment working
+- Git repo initialized and pushed to GitHub
+- Eurostat API ingestion working
+- Master MVP pipeline working
+- Streamlit frontend working
+- Four indicators integrated
+- Documentation updated
+- README includes screenshots/app preview
+- Regression check confirmed all 4 indicators have 28 country rows and non-null values
+
+Current stable indicators:
+
+1. `inflation_pressure`
+2. `housing_pressure`
+3. `poverty_pressure`
+4. `income_capacity`
+
+---
+
+## 3. Current MVP Indicators
+
+### 3.1 `inflation_pressure`
+
+**Source:** Eurostat HICP  
+**Metric:** Annual inflation rate (%)  
+**Interpretation:** Lower is better  
+**Meaning:** Higher values indicate stronger inflation pressure.
+
+---
+
+### 3.2 `housing_pressure`
+
+**Source:** Eurostat SILC  
+**Metric:** Housing overburden rate (%)  
+**Definition:** Share of population spending more than 40% of disposable income on housing  
+**Interpretation:** Lower is better  
+**Meaning:** Higher values indicate stronger housing affordability pressure.
+
+---
+
+### 3.3 `poverty_pressure`
+
+**Source:** Eurostat SILC  
+**Metric:** At-risk-of-poverty rate (%)  
+**Definition:** Share of population with income below 60% of national median equivalised disposable income  
+**Interpretation:** Lower is better  
+**Meaning:** Higher values indicate stronger poverty/social pressure.
+
+---
+
+### 3.4 `income_capacity`
+
+**Source:** Eurostat `ilc_di03`  
+**Metric:** Median equivalised net income  
+**Unit:** PPS / Purchasing Power Standard  
+**Interpretation:** Higher is better  
+**Meaning:** Higher values indicate stronger purchasing-power-adjusted income capacity.
+
+Important:
+
+- `income_capacity` is **not** a pressure indicator.
+- It balances the pressure-side view.
+- It must be formatted in the frontend as PPS, not as a percentage.
+- Example display format: `26,594 PPS`.
+
+---
+
+## 4. Indicator Direction Rules
+
+Use indicator-specific direction logic:
+
+| Indicator | Better Direction |
+|---|---|
+| `inflation_pressure` | Lower is better |
+| `housing_pressure` | Lower is better |
+| `poverty_pressure` | Lower is better |
+| `income_capacity` | Higher is better |
+| Future earnings metrics | Higher is better |
+
+Important frontend logic:
+
+- Key Risk Driver should only consider actual pressure indicators:
+  - `inflation_pressure`
+  - `housing_pressure`
+  - `poverty_pressure`
+- `income_capacity` should not be selected as the key risk driver.
+- It can be shown as a supporting or balancing signal.
+- Comparison logic must treat income capacity as higher-is-better.
+
+---
+
+## 5. Country Coverage
+
+The MVP currently covers 28 European countries:
+
+- Austria
+- Belgium
+- Bulgaria
+- Croatia
+- Cyprus
+- Czechia
+- Denmark
+- Estonia
+- Finland
+- France
+- Germany
+- Greece
+- Hungary
+- Ireland
+- Italy
+- Latvia
+- Lithuania
+- Luxembourg
+- Malta
+- Netherlands
+- Norway
+- Poland
+- Portugal
+- Romania
+- Slovakia
+- Slovenia
+- Spain
+- Sweden
+
+Important Eurostat/YAML notes:
+
+- Greece uses Eurostat code `EL`, not `GR`.
+- Norway must be quoted as `"NO"` in YAML because unquoted `NO` can be parsed as Boolean `False`.
+
+---
+
+## 6. Current Key Commands
+
+Activate virtual environment:
+
+```powershell
+.venv\Scripts\Activate
