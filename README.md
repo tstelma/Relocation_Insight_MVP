@@ -6,16 +6,19 @@ Early-stage exploration tool for comparing European countries by financial and s
 
 ## What this MVP does
 
-Compares 28 European countries across three key indicators:
+Compares 28 European countries across four key indicators:
 
 1. **Inflation Pressure** — Annual inflation rate from HICP (Harmonized Index of Consumer Prices)
 2. **Housing Burden** — Housing overburden rate (% of population spending >40% of income on housing)
 3. **Poverty Risk** — At-risk-of-poverty rate (% of population with income <60% of median)
+4. **Income Capacity** — Median equivalised net income in PPS from Eurostat ilc_di03
+
+The first three indicators are pressure metrics where lower values are generally better. Income capacity is different: higher values mean stronger income capacity and it is not a pressure metric.
 
 For each indicator, the viewer shows:
-- Individual country pressure assessments (Low, Moderate, High, Very High)
+- Individual country indicator assessments (Low, Moderate, High, Very High)
 - Relative ranking within each indicator
-- Overall pressure snapshot (pattern-based assessment combining all three)
+- Overall pressure snapshot (pattern-based assessment across the tracked indicators)
 - Two-country comparison with trade-off analysis
 - Plain-language summaries
 
@@ -58,11 +61,13 @@ Austria, Belgium, Bulgaria, Croatia, Cyprus, Czechia, Denmark, Estonia, Finland,
 - `hicp_annual_inflation_mvp_countries.csv` — Calculated annual inflation rates
 - `housing_overburden_mvp_countries.csv` — Housing pressure data
 - `poverty_risk_mvp_countries.csv` — Poverty risk data
+- `income_capacity_mvp_countries.csv` — Median equivalised net income in PPS
 
 **Insight files:**
 - `inflation_pressure_insights.csv` — Pressure assessment for inflation indicator
 - `housing_pressure_insights.csv` — Pressure assessment for housing indicator
 - `poverty_pressure_insights.csv` — Pressure assessment for poverty indicator
+- `income_capacity_insights.csv` — Income capacity insight cards
 - `all_mvp_insights.csv` — Combined standardized format (input to Streamlit viewer)
 
 All files saved to `data/clean/`
