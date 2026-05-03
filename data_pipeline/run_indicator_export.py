@@ -1,0 +1,76 @@
+from pathlib import Path
+import sys
+import pandas as pd
+import argparse
+
+
+BASE_DIR = Path(__file__).resolve().parents[1]
+sys.path.append(str(BASE_DIR / "data_pipeline"))
+
+from extract.fetch_eurostat import fetch_dataset
+from transform.parse_eurostat import parse_single_geo_time_series
+from utils.config_loader import load_yaml_config
+
+CLEAN_DATA_DIR = BASE_DIR / "data" / "clean"
+
+
+def run_indicator_export(indicator_key: str) -> None:
+    # Load configs
+    datasets_config = load_yaml_config("datasets.yml")
+    countries_config = load_yaml_config("countries.yml")
+
+    if indicator_key not in datasets_config["datasets"]:
+        raise ValueError(f"Indicator '{indicator_key}' not found in datasets.yml")
+
+    dataset_config = datasets_config["datasets"][indicator_key]
+    dataset_code = dataset_config["dataset_code"]
+    filters = dataset_config.get("filters", {})
+
+    countries = countries_config["countries"]
+
+    all_country_frames = []
+
+    for country in countries:
+        country_code = country["code"]
+        print(f"Fetching {indicator_key} data for {country_code}...")
+
+        params = filters.copy()
+        params["geo"] = country_code
+
+        data = fetch_dataset(dataset_code, params=params)
+
+        df = parse_single_geo_time_series(
+            data=data,
+            dataset_code=dataset_code,
+            indicator_name=indicator_key,
+            country_code=country_code,
+        )
+
+        all_country_frames.append(df)
+
+    combined_df = pd.concat(all_country_frames, ignore_index=True)
+
+    CLEAN_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = CLEAN_DATA_DIR / f"{indicator_key}_mvp_countries.csv"
+    combined_df.to_csv(output_path, index=False)
+
+    print(f"\nSaved {indicator_key} data to: {output_path}")
+
+    print(f"\nRows per country for {indicator_key}:")
+    print(combined_df.groupby("country_code").size())
+
+    print(f"\nLatest row per country for {indicator_key}:")
+    latest_rows = (
+        combined_df.sort_values("time_period")
+        .groupby("country_code")
+        .tail(1)[["country_code", "time_period", "value"]]
+    )
+    print(latest_rows)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Export indicator data for all MVP countries")
+    parser.add_argument("indicator_key", help="The indicator key from datasets.yml (e.g., housing_overburden)")
+
+    args = parser.parse_args()
+    run_indicator_export(args.indicator_key)

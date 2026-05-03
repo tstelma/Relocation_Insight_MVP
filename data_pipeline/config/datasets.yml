@@ -9,6 +9,10 @@ datasets:
       - hidden_loss
       - trend_direction
       - cost_pressure
+    filters:
+      coicop: CP00
+      unit: I15
+      lang: en
 
   housing_overburden:
     source: eurostat
@@ -19,3 +23,10 @@ datasets:
     used_for:
       - housing_reality_check
       - relative_position
+    filters:
+      freq: A
+      unit: PC
+      incgrp: TOTAL
+      age: TOTAL
+      sex: T
+      lang: en
