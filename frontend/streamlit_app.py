@@ -160,13 +160,11 @@ def render_income_capacity_signal(country_data: pd.DataFrame) -> None:
         return
 
     row = row.iloc[0]
-    st.markdown("**Supporting income capacity signal**")
+    st.markdown("**Income capacity**")
     st.markdown(f"**{get_metric_label(row['insight_category'])}**")
     st.write(format_metric_value(row['insight_category'], row["metric_value"]))
     st.caption(f"{row['pressure_label']} income capacity • {row.get('relative_rank_message', '')}")
-    st.write(
-        "Higher income capacity suggests stronger local purchasing power and a better starting point for relocation decisions."
-    )
+    st.write("Higher income capacity suggests stronger local purchasing power for relocation.")
 
 
 def render_research_checklist(country_data: pd.DataFrame) -> None:
@@ -252,6 +250,25 @@ def render_country_profile_export(country_data: pd.DataFrame, selected_country: 
     )
 
 
+def render_pressure_signals(country_data: pd.DataFrame) -> None:
+    st.markdown("**Key signals**")
+    categories = [
+        "inflation_pressure",
+        "housing_pressure",
+        "poverty_pressure",
+    ]
+    cols = st.columns(3)
+    for idx, category in enumerate(categories):
+        row = country_data.loc[country_data["insight_category"] == category]
+        if row.empty:
+            continue
+        row = row.iloc[0]
+        with cols[idx]:
+            st.markdown(f"**{get_metric_label(category)}**")
+            st.write(format_metric_value(category, row["metric_value"]))
+            st.caption(f"{row['pressure_label']} • {row['relative_rank_message']}")
+
+
 def render_methodology_notes() -> None:
     with st.expander("Methodology notes"):
         st.write(
@@ -296,35 +313,22 @@ def render_country_profile(country_data: pd.DataFrame, selected_country: str) ->
     overall_pressure = get_overall_pressure(country_data)
 
     st.subheader("Country Profile")
-    st.markdown(f"**{selected_country}**")
-    st.markdown(f"**Overall pressure snapshot:** {overall_pressure}")
-    render_country_profile_export(country_data, selected_country)
+    top_cols = st.columns([3, 1])
+    with top_cols[0]:
+        st.markdown(f"**{selected_country}**")
+        st.markdown(f"**Overall pressure snapshot:** {overall_pressure}")
+    with top_cols[1]:
+        render_country_profile_export(country_data, selected_country)
+
     render_key_risk_driver(country_data)
+    st.divider()
+    render_pressure_signals(country_data)
+    st.divider()
     render_income_capacity_signal(country_data)
+    st.divider()
     render_research_checklist(country_data)
     render_data_freshness_note(country_data)
     render_methodology_notes()
-
-    indicator_categories = [
-        "inflation_pressure",
-        "housing_pressure",
-        "poverty_pressure",
-        "income_capacity",
-    ]
-    cols = st.columns(4)
-
-    for idx, category in enumerate(indicator_categories):
-        row = country_data.loc[country_data["insight_category"] == category]
-        if row.empty:
-            continue
-        row = row.iloc[0]
-        with cols[idx]:
-            st.markdown(f"**{get_metric_label(category)}**")
-            st.write(format_metric_value(category, row["metric_value"]))
-            caption_label = row['pressure_label']
-            if category == "income_capacity":
-                caption_label = f"{caption_label} income capacity"
-            st.caption(f"{caption_label} • {row['relative_rank_message']}")
 
     interpretation_map = {
         "Generally low pressure": "All tracked indicators are low, suggesting a stable financial profile.",
