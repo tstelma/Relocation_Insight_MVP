@@ -17,6 +17,29 @@ DATA_PATH = Path("data") / "clean" / "all_mvp_insights.csv"
 def load_insights():
     return pd.read_csv(DATA_PATH)
 
+
+def to_ordinal(value: int) -> str:
+    if 10 <= value % 100 <= 20:
+        suffix = "th"
+    elif value % 10 == 1:
+        suffix = "st"
+    elif value % 10 == 2:
+        suffix = "nd"
+    elif value % 10 == 3:
+        suffix = "rd"
+    else:
+        suffix = "th"
+    return f"{value}{suffix}"
+
+
+def build_rank_message(rank: int, total: int) -> str:
+    if rank == 1:
+        return "Lowest pressure among selected countries"
+    if rank == total:
+        return "Highest pressure among selected countries"
+    return f"{to_ordinal(rank)} lowest pressure out of {total} selected countries"
+
+
 def main():
     st.title("🏠 Relocation Insight MVP")
     st.markdown("*Explore early financial pressure insights for selected European countries.*")
@@ -28,6 +51,18 @@ def main():
         st.error(f"Data file not found: {DATA_PATH}")
         st.info("Please run the MVP pipeline first: `python data_pipeline/run_mvp_pipeline.py`")
         return
+
+    # Calculate relative ranking across all countries by category
+    df["relative_rank"] = (
+        df.groupby("insight_category")["metric_value"]
+        .rank(method="min", ascending=True)
+    )
+    df["category_count"] = df.groupby("insight_category")["metric_value"].transform("count")
+    df["relative_rank_message"] = df.apply(
+        lambda row: build_rank_message(int(row["relative_rank"]), int(row["category_count"]))
+        if pd.notna(row["relative_rank"]) else "Rank unavailable",
+        axis=1,
+    )
 
     # Country selector
     countries = sorted(df['country_name'].unique())
@@ -97,6 +132,7 @@ def main():
 
             # Main message
             st.info(row['main_message'])
+            st.write(row['relative_rank_message'])
 
             # Why it matters
             with st.expander("💡 Why it matters"):
