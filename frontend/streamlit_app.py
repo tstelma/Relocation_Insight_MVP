@@ -137,21 +137,22 @@ def get_key_risk_driver(country_data: pd.DataFrame):
 def render_key_risk_driver(country_data: pd.DataFrame) -> None:
     best = get_key_risk_driver(country_data)
     if best is None:
-        st.markdown("**Key risk driver:** Data unavailable")
+        st.caption("**Key pressure:** Data unavailable")
         return
 
-    st.markdown("**Key risk driver**")
-    st.markdown(f"**{get_metric_label(best['insight_category'])}**")
-    st.write(format_metric_value(best['insight_category'], best["metric_value"]))
-    st.caption(f"{best['pressure_label']} • {best.get('relative_rank_message', '')}")
-
+    metric_label = get_metric_label(best['insight_category'])
+    metric_val = format_metric_value(best['insight_category'], best["metric_value"])
+    pressure = best['pressure_label']
+    
+    st.markdown(f"**Highest pressure:** {metric_label} ({metric_val}) — {pressure}")
+    
     explanations = {
-        "Low": "This indicator is the strongest signal, but the pressure level remains low.",
-        "Moderate": "This indicator shows moderate pressure and should be monitored.",
-        "High": "This indicator is a high pressure signal and may be a key relocation concern.",
-        "Very High": "This indicator is the strongest risk driver, suggesting significant pressure.",
+        "Low": "Pressure level is low.",
+        "Moderate": "Monitor this indicator.",
+        "High": "Key relocation concern.",
+        "Very High": "Significant pressure signal.",
     }
-    st.write(explanations.get(best["pressure_label"], "This is the leading pressure signal for this country."))
+    st.caption(explanations.get(pressure, "Leading pressure signal."))
 
 
 def render_income_capacity_signal(country_data: pd.DataFrame) -> None:
@@ -160,56 +161,50 @@ def render_income_capacity_signal(country_data: pd.DataFrame) -> None:
         return
 
     row = row.iloc[0]
-    st.markdown("**Income capacity**")
-    st.markdown(f"**{get_metric_label(row['insight_category'])}**")
-    st.write(format_metric_value(row['insight_category'], row["metric_value"]))
-    st.caption(f"{row['pressure_label']} income capacity • {row.get('relative_rank_message', '')}")
-    st.write("Higher income capacity suggests stronger local purchasing power for relocation.")
+    metric_val = format_metric_value(row['insight_category'], row["metric_value"])
+    level = row['pressure_label']
+    
+    st.markdown(f"**Income capacity:** {metric_val} — {level}")
+    st.caption("Higher values indicate stronger local purchasing power.")
 
 
 def render_research_checklist(country_data: pd.DataFrame) -> None:
     best = get_key_risk_driver(country_data)
-    st.markdown("**Suggested next checks**")
 
     if best is None:
         checklist = [
-            "Review salary after tax and cost of living.",
-            "Compare local rent and housing affordability.",
-            "Assess job market stability and healthcare access.",
+            "Review salary after tax and cost of living",
+            "Compare local rent and housing affordability",
+            "Assess job market stability and healthcare access",
         ]
     else:
         category = best["insight_category"]
         if category == "housing_pressure":
             checklist = [
-                "Check city-level rents and rental availability.",
-                "Review local deposit and lease rules.",
-                "Estimate net salary after rent and housing costs.",
+                "Check city-level rents and rental availability",
+                "Review local deposit and lease rules",
+                "Estimate net salary after rent and housing costs",
             ]
         elif category == "inflation_pressure":
             checklist = [
-                "Review recent monthly inflation trends.",
-                "Compare grocery and energy cost changes.",
-                "Assess wage growth relative to inflation.",
+                "Review recent monthly inflation trends",
+                "Compare grocery and energy cost changes",
+                "Assess wage growth relative to inflation",
             ]
         elif category == "poverty_pressure":
             checklist = [
-                "Check job security and employment stability.",
-                "Review income distribution and social benefits.",
-                "Consider regional inequality and local support services.",
+                "Check job security and employment stability",
+                "Review income distribution and social benefits",
+                "Consider regional inequality and local support services",
             ]
-            income_row = country_data.loc[country_data["insight_category"] == "income_capacity"]
-            if not income_row.empty and income_row.iloc[0]["pressure_label"] == "Low":
-                checklist.append(
-                    "Compare local purchasing power and income capacity when median income capacity appears weak."
-                )
         else:
             checklist = [
-                "Review salary after tax and cost of living.",
-                "Compare local rent and housing affordability.",
-                "Assess job market stability and healthcare access.",
+                "Review salary after tax and cost of living",
+                "Compare local rent and housing affordability",
+                "Assess job market stability and healthcare access",
             ]
 
-    st.markdown("\n".join(f"- {item}" for item in checklist))
+    st.markdown(f"**Suggested next checks**\n" + "\n".join(f"• {item}" for item in checklist))
 
 
 def render_data_freshness_note(country_data: pd.DataFrame) -> None:
@@ -251,7 +246,6 @@ def render_country_profile_export(country_data: pd.DataFrame, selected_country: 
 
 
 def render_pressure_signals(country_data: pd.DataFrame) -> None:
-    st.markdown("**Key signals**")
     categories = [
         "inflation_pressure",
         "housing_pressure",
@@ -263,10 +257,12 @@ def render_pressure_signals(country_data: pd.DataFrame) -> None:
         if row.empty:
             continue
         row = row.iloc[0]
+        metric_label = get_metric_label(category)
+        metric_val = format_metric_value(category, row["metric_value"])
         with cols[idx]:
-            st.markdown(f"**{get_metric_label(category)}**")
-            st.write(format_metric_value(category, row["metric_value"]))
-            st.caption(f"{row['pressure_label']} • {row['relative_rank_message']}")
+            st.markdown(f"**{metric_label}**")
+            st.markdown(f"**{metric_val}**")
+            st.caption(f"{row['pressure_label']}")
 
 
 def render_methodology_notes() -> None:
@@ -312,24 +308,42 @@ def render_comparison_verdict(comparison_df: pd.DataFrame, country_a: str, count
 def render_country_profile(country_data: pd.DataFrame, selected_country: str) -> None:
     overall_pressure = get_overall_pressure(country_data)
 
-    st.subheader("Country Profile")
-    top_cols = st.columns([3, 1])
-    with top_cols[0]:
-        st.markdown(f"**{selected_country}**")
-        st.markdown(f"**Overall pressure snapshot:** {overall_pressure}")
-    with top_cols[1]:
+    # Header with export button
+    col_left, col_right = st.columns([3, 1])
+    with col_left:
+        st.markdown(f"## {selected_country}")
+        st.markdown(f"**Overall assessment:** {overall_pressure}")
+    with col_right:
         render_country_profile_export(country_data, selected_country)
 
-    render_key_risk_driver(country_data)
     st.divider()
+    
+    # Pressure indicators section
+    st.markdown("### Pressure Indicators")
     render_pressure_signals(country_data)
+    
     st.divider()
-    render_income_capacity_signal(country_data)
+    
+    # Key insights section
+    col_key, col_income = st.columns(2)
+    
+    with col_key:
+        st.markdown("### Key Pressure")
+        render_key_risk_driver(country_data)
+    
+    with col_income:
+        st.markdown("### Income Capacity")
+        render_income_capacity_signal(country_data)
+    
     st.divider()
+    
+    # Next steps section
+    st.markdown("### Next Steps")
     render_research_checklist(country_data)
-    render_data_freshness_note(country_data)
-    render_methodology_notes()
-
+    
+    st.divider()
+    
+    # Interpretation and notes
     interpretation_map = {
         "Generally low pressure": "All tracked indicators are low, suggesting a stable financial profile.",
         "Price-stable, social risk visible": "Prices are relatively stable, but poverty risk is showing some social pressure.",
@@ -339,7 +353,12 @@ def render_country_profile(country_data: pd.DataFrame, selected_country: str) ->
         "Broad pressure risk": "Multiple indicators show high pressure, suggesting broad financial stress.",
         "Uneven pressure profile": "The country shows a mixed profile across inflation, housing, and poverty pressures."
     }
+    st.markdown("**Profile interpretation:**")
     st.write(interpretation_map.get(overall_pressure, "This country has a mixed pressure profile across the tracked indicators."))
+    
+    # Data freshness and methodology (subtle)
+    render_data_freshness_note(country_data)
+    render_methodology_notes()
 
 
 def main():
@@ -388,76 +407,16 @@ def main():
     st.header(f"📊 Insights for {selected_country}")
     st.divider()
 
-    # Country pressure summary
-    st.subheader("Country pressure snapshot")
-    total_insights = len(country_data)
+    # Simplified pressure snapshot summary
     high_pressure_count = country_data["pressure_label"].isin(["High", "Very High"]).sum()
-    inflation_value = country_data.loc[
-        country_data["insight_category"] == "inflation_pressure",
-        "metric_value"
-    ].mean()
-    housing_value = country_data.loc[
-        country_data["insight_category"] == "housing_pressure",
-        "metric_value"
-    ].mean()
-    poverty_value = country_data.loc[
-        country_data["insight_category"] == "poverty_pressure",
-        "metric_value"
-    ].mean()
-
-    # Calculate overall pressure snapshot
-    # Extract pressure labels for each category
-    inflation_label = country_data.loc[
-        country_data["insight_category"] == "inflation_pressure",
-        "pressure_label"
-    ].values[0] if len(country_data[country_data["insight_category"] == "inflation_pressure"]) > 0 else None
-
-    housing_label = country_data.loc[
-        country_data["insight_category"] == "housing_pressure",
-        "pressure_label"
-    ].values[0] if len(country_data[country_data["insight_category"] == "housing_pressure"]) > 0 else None
-
-    poverty_label = country_data.loc[
-        country_data["insight_category"] == "poverty_pressure",
-        "pressure_label"
-    ].values[0] if len(country_data[country_data["insight_category"] == "poverty_pressure"]) > 0 else None
-
-    # Apply pattern-based rules for overall pressure snapshot
-    if all([inflation_label == "Low", housing_label == "Low", poverty_label == "Low"]):
-        overall_pressure = "Generally low pressure"
-    elif (inflation_label in ["Low", "Moderate"] and housing_label == "Low" and 
-          poverty_label in ["Moderate", "High", "Very High"]):
-        overall_pressure = "Price-stable, social risk visible"
-    elif (inflation_label in ["Low", "Moderate"] and housing_label in ["High", "Very High"]):
-        overall_pressure = "Housing stress despite price stability"
-    elif (inflation_label in ["High", "Very High"] and housing_label in ["Low", "Moderate"]):
-        overall_pressure = "Price pressure, housing less severe"
-    elif (poverty_label in ["High", "Very High"] and inflation_label in ["Low", "Moderate"] and
-          housing_label in ["Low", "Moderate"]):
-        overall_pressure = "Social vulnerability despite manageable costs"
-    elif country_data["pressure_label"].isin(["High", "Very High"]).sum() >= 2:
-        overall_pressure = "Broad pressure risk"
-    else:
-        overall_pressure = "Uneven pressure profile"
-
-    col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Total insights", total_insights)
-    col2.metric("High / Very High pressure", high_pressure_count)
-    col3.metric(
-        "Inflation value",
-        f"{inflation_value:.2f}" if pd.notna(inflation_value) else "N/A"
-    )
-    col4.metric(
-        "Housing burden value",
-        f"{housing_value:.2f}" if pd.notna(housing_value) else "N/A"
-    )
-    col5.metric(
-        "Poverty risk value",
-        f"{poverty_value:.2f}" if pd.notna(poverty_value) else "N/A"
-    )
-
+    high_pressure_text = f"{high_pressure_count} indicator(s) show high/very high pressure" if high_pressure_count > 0 else "All indicators are low/moderate pressure"
+    st.markdown(f"**Quick overview:** {high_pressure_text}")
     st.divider()
     render_country_profile(country_data, selected_country)
+    st.divider()
+
+    # Detailed insight cards section
+    st.header("📈 Detailed Indicator Insights")
     st.divider()
 
     # Display insight cards
@@ -502,21 +461,28 @@ def main():
 
             st.divider()
 
+    st.divider()
+
     # Compare two countries
-    st.subheader("Country comparison")
-    compare_col1, compare_col2 = st.columns(2)
-    from_country = compare_col1.selectbox(
-        "From country",
-        countries,
-        index=0,
-        key="from_country"
-    )
-    to_country = compare_col2.selectbox(
-        "To country",
-        countries,
-        index=1 if len(countries) > 1 else 0,
-        key="to_country"
-    )
+    st.header("🔄 Country Comparison")
+    st.divider()
+    
+    # Country selectors
+    comp_col1, comp_col2 = st.columns(2)
+    with comp_col1:
+        from_country = st.selectbox(
+            "From country",
+            countries,
+            index=0,
+            key="from_country"
+        )
+    with comp_col2:
+        to_country = st.selectbox(
+            "To country",
+            countries,
+            index=1 if len(countries) > 1 else 0,
+            key="to_country"
+        )
 
     def get_metric(country_name: str, category: str) -> float | None:
         values = df.loc[
