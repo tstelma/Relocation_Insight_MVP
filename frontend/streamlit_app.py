@@ -40,6 +40,23 @@ def build_rank_message(rank: int, total: int) -> str:
     return f"{to_ordinal(rank)} lowest pressure out of {total} selected countries"
 
 
+def get_metric_label(category: str) -> str:
+    """Map insight category to human-readable metric label."""
+    labels = {
+        "inflation_pressure": "Annual inflation rate",
+        "housing_pressure": "Housing overburden rate",
+        "poverty_pressure": "At-risk-of-poverty rate"
+    }
+    return labels.get(category, category.replace("_", " ").title())
+
+
+def format_percentage(value: float | None) -> str:
+    """Format value as percentage string."""
+    if pd.isna(value):
+        return "N/A"
+    return f"{value:.2f}%"
+
+
 def main():
     st.title("🏠 Relocation Insight MVP")
     st.markdown("*Explore early financial pressure insights for selected European countries.*")
@@ -134,8 +151,8 @@ def main():
 
             # Metric value
             st.metric(
-                label="Latest Value",
-                value=f"{row['metric_value']:.2f}" if pd.notna(row['metric_value']) else "N/A"
+                label=get_metric_label(row['insight_category']),
+                value=format_percentage(row['metric_value'])
             )
 
             # Main message
@@ -189,9 +206,9 @@ def main():
 
     comparison_rows = []
     for metric_label, from_value, to_value in [
-        ("Inflation pressure", from_inflation, to_inflation),
-        ("Housing burden", from_housing, to_housing),
-        ("Poverty risk", from_poverty, to_poverty),
+        ("Annual inflation rate", from_inflation, to_inflation),
+        ("Housing overburden rate", from_housing, to_housing),
+        ("At-risk-of-poverty rate", from_poverty, to_poverty),
     ]:
         if from_value is None or to_value is None:
             difference = None
@@ -207,9 +224,9 @@ def main():
 
         comparison_rows.append({
             "Metric": metric_label,
-            "From country value": f"{from_value:.2f}" if pd.notna(from_value) else "N/A",
-            "To country value": f"{to_value:.2f}" if pd.notna(to_value) else "N/A",
-            "Difference": f"{difference:.2f}" if difference is not None else "N/A",
+            "From country value": format_percentage(from_value),
+            "To country value": format_percentage(to_value),
+            "Difference": f"{difference:+.2f}%" if difference is not None else "N/A",
             "Better country": better,
         })
 
