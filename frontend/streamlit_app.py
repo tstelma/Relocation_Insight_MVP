@@ -189,6 +189,26 @@ def render_data_freshness_note(country_data: pd.DataFrame) -> None:
         st.markdown(f"*Latest data period used: {latest_period}*")
 
 
+def render_country_profile_export(country_data: pd.DataFrame, selected_country: str) -> None:
+    if country_data.empty:
+        st.info("No country profile data available to export.")
+        return
+
+    csv_bytes = country_data.to_csv(index=False).encode("utf-8")
+    safe_name = "".join(
+        ch if ch.isalnum() or ch in {" ", "-", "_"} else "_"
+        for ch in selected_country
+    ).strip().lower().replace(" ", "_")
+    filename = f"{safe_name}_relocation_pressure_profile.csv"
+
+    st.download_button(
+        label="Download country profile CSV",
+        data=csv_bytes,
+        file_name=filename,
+        mime="text/csv",
+    )
+
+
 def render_methodology_notes() -> None:
     with st.expander("Methodology notes"):
         st.write(
@@ -231,6 +251,7 @@ def render_country_profile(country_data: pd.DataFrame, selected_country: str) ->
     st.subheader("Country Profile")
     st.markdown(f"**{selected_country}**")
     st.markdown(f"**Overall pressure snapshot:** {overall_pressure}")
+    render_country_profile_export(country_data, selected_country)
     render_key_risk_driver(country_data)
     render_research_checklist(country_data)
     render_data_freshness_note(country_data)
