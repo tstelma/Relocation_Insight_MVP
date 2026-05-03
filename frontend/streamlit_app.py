@@ -50,14 +50,25 @@ def main():
     st.subheader("Country pressure summary")
     total_insights = len(country_data)
     high_pressure_count = country_data["pressure_label"].isin(["High", "Very High"]).sum()
-    average_metric_value = country_data["metric_value"].mean()
+    inflation_value = country_data.loc[
+        country_data["insight_category"] == "inflation_pressure",
+        "metric_value"
+    ].mean()
+    housing_value = country_data.loc[
+        country_data["insight_category"] == "housing_pressure",
+        "metric_value"
+    ].mean()
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total insights", total_insights)
     col2.metric("High / Very High pressure", high_pressure_count)
     col3.metric(
-        "Average metric value",
-        f"{average_metric_value:.2f}" if pd.notna(average_metric_value) else "N/A"
+        "Inflation value",
+        f"{inflation_value:.2f}" if pd.notna(inflation_value) else "N/A"
+    )
+    col4.metric(
+        "Housing burden value",
+        f"{housing_value:.2f}" if pd.notna(housing_value) else "N/A"
     )
 
     # Display insight cards
