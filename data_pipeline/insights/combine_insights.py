@@ -8,6 +8,7 @@ sys.path.append(str(BASE_DIR / "data_pipeline"))
 
 INFLATION_INSIGHTS_PATH = Path("data") / "clean" / "inflation_pressure_insights.csv"
 HOUSING_INSIGHTS_PATH = Path("data") / "clean" / "housing_pressure_insights.csv"
+POVERTY_INSIGHTS_PATH = Path("data") / "clean" / "poverty_pressure_insights.csv"
 OUTPUT_PATH = Path("data") / "clean" / "all_mvp_insights.csv"
 
 
@@ -22,8 +23,13 @@ def combine_insights() -> pd.DataFrame:
     housing_df["insight_category"] = "housing_pressure"
     housing_df = housing_df.rename(columns={"housing_overburden_rate": "metric_value"})
 
+    # Read poverty insights
+    poverty_df = pd.read_csv(POVERTY_INSIGHTS_PATH)
+    poverty_df["insight_category"] = "poverty_pressure"
+    poverty_df = poverty_df.rename(columns={"poverty_risk_rate": "metric_value"})
+
     # Combine the dataframes
-    combined_df = pd.concat([inflation_df, housing_df], ignore_index=True)
+    combined_df = pd.concat([inflation_df, housing_df, poverty_df], ignore_index=True)
 
     # Select and order the final columns
     final_columns = [
@@ -48,4 +54,6 @@ if __name__ == "__main__":
     result_df.to_csv(OUTPUT_PATH, index=False)
 
     print(result_df[["insight_category", "country_code", "country_name", "metric_value", "pressure_label", "title"]])
+    print("\nValue counts by insight_category:")
+    print(result_df["insight_category"].value_counts())
     print(f"\nSaved combined insights to: {OUTPUT_PATH}")
