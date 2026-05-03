@@ -216,7 +216,7 @@ def main():
     if inflation_diff is not None and housing_diff is not None and inflation_diff < 0.5 and housing_diff < 0.5:
         tradeoff_label = "No major difference"
     elif inflation_better == housing_better and inflation_better not in ["Equal", "Data unavailable"]:
-        tradeoff_label = "Clear advantage"
+        tradeoff_label = f"Clear advantage for {inflation_better}"
     elif inflation_better not in ["Equal", "Data unavailable"] and housing_better not in ["Equal", "Data unavailable"] and inflation_better != housing_better:
         tradeoff_label = "Mixed trade-off"
     else:
