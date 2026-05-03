@@ -1,3 +1,4 @@
+from pathlib import Path
 import pandas as pd
 
 from extract.fetch_eurostat import fetch_dataset
@@ -36,6 +37,14 @@ for country in countries:
     all_country_frames.append(df)
 
 combined_df = pd.concat(all_country_frames, ignore_index=True)
+
+output_dir = Path("data") / "clean"
+output_dir.mkdir(parents=True, exist_ok=True)
+
+output_path = output_dir / "hicp_index_mvp_countries.csv"
+combined_df.to_csv(output_path, index=False)
+
+print(f"\nSaved clean HICP data to: {output_path}")
 
 print("\nCombined data preview:")
 print(combined_df.head())
