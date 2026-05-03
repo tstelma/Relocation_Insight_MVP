@@ -90,7 +90,7 @@ def get_overall_pressure(country_data: pd.DataFrame) -> str:
     return "Uneven pressure profile"
 
 
-def render_key_risk_driver(country_data: pd.DataFrame) -> None:
+def get_key_risk_driver(country_data: pd.DataFrame):
     severity_map = {
         "Low": 1,
         "Moderate": 2,
@@ -102,13 +102,21 @@ def render_key_risk_driver(country_data: pd.DataFrame) -> None:
         severity = severity_map.get(row["pressure_label"])
         if severity is None:
             continue
-        candidates.append((severity, row["metric_value"], row))
+        metric_value = row["metric_value"] if pd.notna(row["metric_value"]) else float("-inf")
+        candidates.append((severity, metric_value, row))
 
     if not candidates:
+        return None
+
+    return max(candidates, key=lambda entry: (entry[0], entry[1]))[2]
+
+
+def render_key_risk_driver(country_data: pd.DataFrame) -> None:
+    best = get_key_risk_driver(country_data)
+    if best is None:
         st.markdown("**Key risk driver:** Data unavailable")
         return
 
-    best = max(candidates, key=lambda entry: (entry[0], entry[1] if pd.notna(entry[1]) else float("-inf")))[2]
     st.markdown("**Key risk driver**")
     st.markdown(f"**{get_metric_label(best['insight_category'])}**")
     st.write(format_percentage(best["metric_value"]))
@@ -123,6 +131,46 @@ def render_key_risk_driver(country_data: pd.DataFrame) -> None:
     st.write(explanations.get(best["pressure_label"], "This is the leading pressure signal for this country."))
 
 
+def render_research_checklist(country_data: pd.DataFrame) -> None:
+    best = get_key_risk_driver(country_data)
+    st.markdown("**Suggested next checks**")
+
+    if best is None:
+        checklist = [
+            "Review salary after tax and cost of living.",
+            "Compare local rent and housing affordability.",
+            "Assess job market stability and healthcare access.",
+        ]
+    else:
+        category = best["insight_category"]
+        if category == "housing_pressure":
+            checklist = [
+                "Check city-level rents and rental availability.",
+                "Review local deposit and lease rules.",
+                "Estimate net salary after rent and housing costs.",
+            ]
+        elif category == "inflation_pressure":
+            checklist = [
+                "Review recent monthly inflation trends.",
+                "Compare grocery and energy cost changes.",
+                "Assess wage growth relative to inflation.",
+            ]
+        elif category == "poverty_pressure":
+            checklist = [
+                "Check job security and employment stability.",
+                "Review income distribution and social benefits.",
+                "Consider regional inequality and local support services.",
+            ]
+        else:
+            checklist = [
+                "Review salary after tax and cost of living.",
+                "Compare local rent and housing affordability.",
+                "Assess job market stability and healthcare access.",
+            ]
+
+    st.markdown("\n".join(f"- {item}" for item in checklist))
+
+
 def render_country_profile(country_data: pd.DataFrame, selected_country: str) -> None:
     overall_pressure = get_overall_pressure(country_data)
 
@@ -130,6 +178,7 @@ def render_country_profile(country_data: pd.DataFrame, selected_country: str) ->
     st.markdown(f"**{selected_country}**")
     st.markdown(f"**Overall pressure snapshot:** {overall_pressure}")
     render_key_risk_driver(country_data)
+    render_research_checklist(country_data)
 
     indicator_categories = [
         "inflation_pressure",
