@@ -206,6 +206,23 @@ def main():
     st.table(comparison_df)
     st.write("Lower values suggest lower financial pressure for this metric.")
 
+    # Comparison summary
+    st.subheader("Comparison summary")
+    inflation_better = comparison_rows[0]["Better country"]
+    housing_better = comparison_rows[1]["Better country"]
+
+    if inflation_better == housing_better and inflation_better not in ["Equal", "Data unavailable"]:
+        summary_text = f"{inflation_better} shows lower pressure across both tracked indicators."
+    elif inflation_better not in ["Equal", "Data unavailable"] and housing_better not in ["Equal", "Data unavailable"] and inflation_better != housing_better:
+        summary_text = (
+            f"This comparison shows a mixed trade-off: {inflation_better} performs better on Inflation pressure, "
+            f"while {housing_better} performs better on Housing burden."
+        )
+    else:
+        summary_text = "This comparison includes equal or unavailable values for one or both metrics."
+
+    st.write(summary_text)
+
     # Raw data table
     st.header("📋 Raw Data")
     st.dataframe(
