@@ -20,6 +20,25 @@ INDICATOR_LABELS = {
     "income_capacity": "Income capacity",
 }
 
+METRIC_EXPLANATIONS = {
+    "inflation_pressure": {
+        "definition": "Annual price growth. Lower values usually mean more stable prices.",
+        "rule": "Lower inflation = less price pressure.",
+    },
+    "housing_pressure": {
+        "definition": "Share of people spending over 40% of income on housing.",
+        "rule": "Lower housing overburden = lower housing stress.",
+    },
+    "poverty_pressure": {
+        "definition": "Share of people below 60% of national median income.",
+        "rule": "Lower poverty risk = lower social pressure.",
+    },
+    "income_capacity": {
+        "definition": "Median equivalised net income adjusted for purchasing power.",
+        "rule": "Higher PPS income = stronger local purchasing power.",
+    },
+}
+
 @st.cache_data
 def load_insights():
     return pd.read_csv(DATA_PATH)
@@ -45,7 +64,7 @@ def apply_visual_style() -> None:
             background: var(--secondary-background-color, rgba(128, 128, 128, 0.08));
             border: 1px solid rgba(128, 128, 128, 0.24);
             border-radius: 8px;
-            padding: 0.75rem 0.9rem;
+            padding: 0.55rem 0.75rem;
             color: var(--text-color, inherit);
         }
         div[data-testid="stMetric"] * {
@@ -101,6 +120,47 @@ def get_metric_label(category: str) -> str:
         "income_capacity": "Income capacity"
     }
     return labels.get(category, category.replace("_", " ").title())
+
+
+def render_metric_explanation(category: str) -> None:
+    explanation = METRIC_EXPLANATIONS.get(category)
+    if explanation is None:
+        return
+
+    if hasattr(st, "popover"):
+        with st.popover("What is this?"):
+            st.write(explanation["definition"])
+            st.caption(explanation["rule"])
+    else:
+        with st.expander("What is this?", expanded=False):
+            st.write(explanation["definition"])
+            st.caption(explanation["rule"])
+
+
+def make_compact_message(message: str, max_length: int = 130) -> str:
+    if pd.isna(message):
+        return ""
+
+    text = str(message).strip()
+    if not text:
+        return ""
+
+    first_sentence = text.split(". ")[0].strip()
+    if first_sentence and not first_sentence.endswith("."):
+        first_sentence = f"{first_sentence}."
+
+    if len(first_sentence) <= max_length:
+        return first_sentence
+
+    return f"{first_sentence[: max_length - 3].rstrip()}..."
+
+
+def build_quick_overview(high_pressure_count: int) -> str:
+    if high_pressure_count == 0:
+        return "No elevated pressure signals detected"
+    if high_pressure_count == 1:
+        return "1 elevated pressure signal detected"
+    return f"{high_pressure_count} elevated pressure signals detected"
 
 
 def format_percentage(value: float | None) -> str:
@@ -205,15 +265,12 @@ def render_key_risk_driver(country_data: pd.DataFrame) -> None:
     pressure = best['pressure_label']
     
     st.metric(metric_label, metric_val)
+    render_metric_explanation(best["insight_category"])
     st.caption(f"Key pressure signal: {pressure}")
-    
-    explanations = {
-        "Low": "Pressure level is low.",
-        "Moderate": "Monitor this indicator.",
-        "High": "Key relocation concern.",
-        "Very High": "Significant pressure signal.",
-    }
-    st.caption(explanations.get(pressure, "Leading pressure signal."))
+    st.caption(
+        f"{metric_label} is the strongest pressure signal because it has the highest pressure level "
+        f"among the tracked pressure indicators for this country."
+    )
 
 
 def render_income_capacity_signal(country_data: pd.DataFrame) -> None:
@@ -226,6 +283,7 @@ def render_income_capacity_signal(country_data: pd.DataFrame) -> None:
     level = row['pressure_label']
     
     st.metric("Income capacity", metric_val)
+    render_metric_explanation("income_capacity")
     st.caption(f"Capacity signal: {level}")
     st.caption("Higher values indicate stronger local purchasing power.")
 
@@ -235,35 +293,35 @@ def render_research_checklist(country_data: pd.DataFrame) -> None:
 
     if best is None:
         checklist = [
-            "Review salary after tax and cost of living",
-            "Compare local rent and housing affordability",
-            "Assess job market stability and healthcare access",
+            "Estimate net salary",
+            "Check city rents",
+            "Review jobs and healthcare",
         ]
     else:
         category = best["insight_category"]
         if category == "housing_pressure":
             checklist = [
-                "Check city-level rents and rental availability",
-                "Review local deposit and lease rules",
-                "Estimate net salary after rent and housing costs",
+                "Check city rents",
+                "Review lease rules",
+                "Estimate rent after salary",
             ]
         elif category == "inflation_pressure":
             checklist = [
-                "Review recent monthly inflation trends",
-                "Compare grocery and energy cost changes",
-                "Assess wage growth relative to inflation",
+                "Check recent inflation",
+                "Compare food and energy costs",
+                "Review wage growth",
             ]
         elif category == "poverty_pressure":
             checklist = [
-                "Check job security and employment stability",
-                "Review income distribution and social benefits",
-                "Consider regional inequality and local support services",
+                "Check job security",
+                "Review social support",
+                "Compare regional inequality",
             ]
         else:
             checklist = [
-                "Review salary after tax and cost of living",
-                "Compare local rent and housing affordability",
-                "Assess job market stability and healthcare access",
+                "Estimate net salary",
+                "Check city rents",
+                "Review jobs and healthcare",
             ]
 
     st.markdown("\n".join(f"- {item}" for item in checklist))
@@ -322,8 +380,10 @@ def render_pressure_signals(country_data: pd.DataFrame) -> None:
         metric_label = get_metric_label(category)
         metric_val = format_metric_value(category, row["metric_value"])
         with cols[idx]:
-            st.metric(metric_label, metric_val)
-            st.caption(f"Pressure signal: {row['pressure_label']}")
+            with st.container(border=True):
+                st.metric(metric_label, metric_val)
+                render_metric_explanation(category)
+                st.caption(f"Pressure signal: {row['pressure_label']}")
 
 
 def render_methodology_notes() -> None:
@@ -500,32 +560,36 @@ def render_country_profile(country_data: pd.DataFrame, selected_country: str) ->
 
 def render_detailed_insights(country_data: pd.DataFrame) -> None:
     st.header("Detailed indicator insights")
-    st.caption("Each indicator keeps the headline signal visible. Longer context is collapsed to keep the page easier to scan.")
+    st.caption("Compact signal cards. Open a card note for context and source details.")
 
-    for _, row in country_data.iterrows():
+    card_columns = st.columns(2)
+    for idx, (_, row) in enumerate(country_data.iterrows()):
         metric_label = get_metric_label(row["insight_category"])
         metric_value = format_metric_value(row["insight_category"], row["metric_value"])
         category_label = row["insight_category"].replace("_", " ").title()
+        compact_message = make_compact_message(row["main_message"])
 
-        with st.container():
-            col_title, col_value, col_label = st.columns([2.4, 1, 1])
-            with col_title:
-                st.markdown(f"**{row['title']}**")
-                st.caption(category_label)
-            with col_value:
-                st.metric(metric_label, metric_value)
-            with col_label:
-                st.markdown(f"**{row['pressure_label']}**")
-                st.caption(row["relative_rank_message"])
+        with card_columns[idx % 2]:
+            with st.container(border=True):
+                top_left, top_right = st.columns([1.5, 1])
+                with top_left:
+                    st.markdown(f"**{metric_label}**")
+                    st.caption(category_label)
+                with top_right:
+                    st.markdown(f"**{row['pressure_label']}**")
+                    st.caption("Signal label")
 
-            st.write(row["main_message"])
+                st.metric("Value", metric_value)
+                render_metric_explanation(row["insight_category"])
 
-            with st.expander("Why it matters and source", expanded=False):
-                st.write(row["why_it_matters"])
-                st.caption(f"Source: {row['source']}")
-                st.caption(f"Confidence: {row['confidence_level']}")
+                if compact_message:
+                    st.caption(compact_message)
 
-            st.divider()
+                st.caption(f"{row['source']} | {row['confidence_level']} confidence")
+
+                with st.expander("More context", expanded=False):
+                    st.write(row["why_it_matters"])
+                    st.caption(row["relative_rank_message"])
 
 
 def main():
@@ -576,7 +640,7 @@ def main():
         return
 
     high_pressure_count = country_data["pressure_label"].isin(["High", "Very High"]).sum()
-    high_pressure_text = f"{high_pressure_count} indicator(s) show high/very high pressure" if high_pressure_count > 0 else "All indicators are low/moderate pressure"
+    high_pressure_text = build_quick_overview(high_pressure_count)
     st.caption(f"Quick overview: {high_pressure_text}")
     st.divider()
     render_country_profile(country_data, selected_country)
