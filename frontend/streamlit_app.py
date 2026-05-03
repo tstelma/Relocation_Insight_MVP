@@ -115,6 +115,41 @@ def main():
         "metric_value"
     ].mean()
 
+    # Calculate overall pressure snapshot
+    # Extract pressure labels for each category
+    inflation_label = country_data.loc[
+        country_data["insight_category"] == "inflation_pressure",
+        "pressure_label"
+    ].values[0] if len(country_data[country_data["insight_category"] == "inflation_pressure"]) > 0 else None
+
+    housing_label = country_data.loc[
+        country_data["insight_category"] == "housing_pressure",
+        "pressure_label"
+    ].values[0] if len(country_data[country_data["insight_category"] == "housing_pressure"]) > 0 else None
+
+    poverty_label = country_data.loc[
+        country_data["insight_category"] == "poverty_pressure",
+        "pressure_label"
+    ].values[0] if len(country_data[country_data["insight_category"] == "poverty_pressure"]) > 0 else None
+
+    # Apply pattern-based rules for overall pressure snapshot
+    if all([inflation_label == "Low", housing_label == "Low", poverty_label == "Low"]):
+        overall_pressure = "Generally low pressure"
+    elif (inflation_label in ["Low", "Moderate"] and housing_label == "Low" and 
+          poverty_label in ["Moderate", "High", "Very High"]):
+        overall_pressure = "Price-stable, social risk visible"
+    elif (inflation_label in ["Low", "Moderate"] and housing_label in ["High", "Very High"]):
+        overall_pressure = "Housing stress despite price stability"
+    elif (inflation_label in ["High", "Very High"] and housing_label in ["Low", "Moderate"]):
+        overall_pressure = "Price pressure, housing less severe"
+    elif (poverty_label in ["High", "Very High"] and inflation_label in ["Low", "Moderate"] and
+          housing_label in ["Low", "Moderate"]):
+        overall_pressure = "Social vulnerability despite manageable costs"
+    elif country_data["pressure_label"].isin(["High", "Very High"]).sum() >= 2:
+        overall_pressure = "Broad pressure risk"
+    else:
+        overall_pressure = "Uneven pressure profile"
+
     col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Total insights", total_insights)
     col2.metric("High / Very High pressure", high_pressure_count)
@@ -130,6 +165,9 @@ def main():
         "Poverty risk value",
         f"{poverty_value:.2f}" if pd.notna(poverty_value) else "N/A"
     )
+
+    # Display overall pressure snapshot separately
+    st.markdown(f"**Overall pressure snapshot:** {overall_pressure}")
 
     # Display insight cards
     for _, row in country_data.iterrows():
