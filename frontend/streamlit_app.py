@@ -590,13 +590,59 @@ def format_change_value(category: str, value: float | None) -> str:
         return "N/A"
     if category == "income_capacity":
         return f"{value:+,.0f} PPS"
-    return f"{value:+.2f}%"
+    return f"{value:+.2f} pp"
 
 
 def get_trend_unit(category: str) -> str:
     if category == "income_capacity":
         return "PPS"
     return "percent"
+
+
+TIME_RANGE_OPTIONS = ["Last 10 years", "Last 20 years", "Full available history"]
+
+
+def filter_timeseries_by_range(df: pd.DataFrame, selected_range: str) -> pd.DataFrame:
+    if selected_range == "Full available history" or df.empty:
+        return df
+
+    valid_years = df["time_period"].dropna()
+    if valid_years.empty:
+        return df
+
+    latest_year = int(valid_years.max())
+    years_back = 10 if selected_range == "Last 10 years" else 20
+    start_year = latest_year - years_back + 1
+    return df.loc[df["time_period"] >= start_year].copy()
+
+
+def has_large_historical_spike(full_df: pd.DataFrame, recent_df: pd.DataFrame) -> bool:
+    full_values = full_df["metric_value"].dropna().abs()
+    recent_values = recent_df["metric_value"].dropna().abs()
+    if full_values.empty or recent_values.empty:
+        return False
+
+    recent_reference = recent_values.quantile(0.95)
+    if recent_reference <= 0:
+        return False
+    return full_values.max() >= recent_reference * 5
+
+
+def render_outlier_context_note(full_df: pd.DataFrame, recent_df: pd.DataFrame) -> None:
+    if has_large_historical_spike(full_df, recent_df):
+        render_metadata("Older historical outliers may compress recent variation. Use a shorter time range for recent context.")
+
+
+def render_trend_unit_note(indicator: str) -> None:
+    if indicator == "income_capacity":
+        render_metadata("Unit: PPS. Absolute changes are shown in PPS.")
+    else:
+        render_metadata("Unit: percent. Absolute changes are shown in percentage points.")
+
+
+def get_chart_metric_label(indicator: str) -> str:
+    unit = "PPS" if indicator == "income_capacity" else "%"
+    return f"{INDICATOR_LABELS.get(indicator, get_metric_label(indicator))} ({unit})"
 
 
 def format_period_for_display(value) -> str:
@@ -694,7 +740,6 @@ def render_key_risk_driver(country_data: pd.DataFrame) -> None:
             f"{metric_label} is the strongest pressure signal because it has the highest pressure level "
             f"among the tracked pressure indicators for this country."
         ),
-        best.get("relative_rank_message"),
     )
 
 
@@ -713,7 +758,6 @@ def render_income_capacity_signal(country_data: pd.DataFrame) -> None:
     render_indicator_context(
         "income_capacity",
         "Higher values indicate stronger local purchasing power.",
-        row.get("relative_rank_message"),
     )
 
 
@@ -813,7 +857,7 @@ def render_pressure_signals(country_data: pd.DataFrame) -> None:
                 st.metric(metric_label, metric_val)
                 render_status_label(f"{row['pressure_label']} pressure")
                 render_signal_sentence(make_signal_sentence(row, max_length=82))
-                render_indicator_context(category, rank_message=row.get("relative_rank_message"))
+                render_indicator_context(category)
 
 
 def render_methodology_notes() -> None:
@@ -842,24 +886,23 @@ def render_trend_summary_stats(chart_df: pd.DataFrame, indicator: str) -> None:
     valid_df = valid_df.sort_values("time_period")
     earliest = valid_df.iloc[0]
     latest = valid_df.iloc[-1]
-    earliest_year = int(earliest["time_period"])
-    latest_year = int(latest["time_period"])
     earliest_value = float(earliest["metric_value"])
     latest_value = float(latest["metric_value"])
+    min_value = float(valid_df["metric_value"].min())
+    max_value = float(valid_df["metric_value"].max())
     absolute_change = latest_value - earliest_value
     relative_change = None
     if earliest_value != 0:
         relative_change = (absolute_change / abs(earliest_value)) * 100
+    position_label = get_historical_position_label(min_value, max_value, latest_value)
 
-    stat_cols = st.columns(7)
+    stat_cols = st.columns(5)
     stats = [
-        ("Earliest year", str(earliest_year)),
-        ("Latest year", str(latest_year)),
-        ("Earliest value", format_metric_value(indicator, earliest_value)),
         ("Latest value", format_metric_value(indicator, latest_value)),
         ("Abs. change", format_change_value(indicator, absolute_change)),
         ("Rel. change", f"{relative_change:+.1f}%" if relative_change is not None else "N/A"),
-        ("Valid years", str(valid_df["time_period"].nunique())),
+        ("Historical range", f"{format_metric_value(indicator, min_value)} to {format_metric_value(indicator, max_value)}"),
+        ("Current position", position_label),
     ]
 
     for col, (label, value) in zip(stat_cols, stats):
@@ -881,33 +924,6 @@ def get_historical_position_label(min_value: float, max_value: float, latest_val
     if position_ratio <= 0.85:
         return "upper range"
     return "near historical high"
-
-
-def render_historical_context(chart_df: pd.DataFrame, indicator: str) -> None:
-    valid_df = chart_df.dropna(subset=["time_period", "metric_value"]).copy()
-    if len(valid_df) < 2:
-        render_metadata("Historical context needs at least two valid values for the selected series.")
-        return
-
-    valid_df = valid_df.sort_values("time_period")
-    min_value = float(valid_df["metric_value"].min())
-    max_value = float(valid_df["metric_value"].max())
-    latest = valid_df.iloc[-1]
-    latest_value = float(latest["metric_value"])
-    latest_year = int(latest["time_period"])
-    position_label = get_historical_position_label(min_value, max_value, latest_value)
-
-    context_cols = st.columns(4)
-    stats = [
-        ("Latest value", format_metric_value(indicator, latest_value)),
-        ("Historical range", f"{format_metric_value(indicator, min_value)} to {format_metric_value(indicator, max_value)}"),
-        ("Current position", position_label),
-        ("Latest year", str(latest_year)),
-    ]
-
-    for col, (label, value) in zip(context_cols, stats):
-        with col:
-            render_trend_stat(label, value)
 
 
 def render_trend_data_quality(chart_df: pd.DataFrame, timeseries_df: pd.DataFrame, indicator: str) -> None:
@@ -949,24 +965,25 @@ def render_trend_data_quality(chart_df: pd.DataFrame, timeseries_df: pd.DataFram
     else:
         quality_label = "Suitable for cautious trend interpretation"
 
-    render_status_label(quality_label)
-    detail_cols = st.columns(4)
-    details = [
-        ("Valid years", str(valid_year_count)),
-        (
-            "Missing coverage",
+    with st.expander("Data quality details", expanded=False):
+        render_status_label(quality_label)
+        detail_cols = st.columns(4)
+        details = [
+            ("Valid years", str(valid_year_count)),
             (
-                f"{missing_year_count} years ({missing_share:.0%})"
-                if missing_year_count is not None and missing_share is not None
-                else "N/A"
+                "Missing coverage",
+                (
+                    f"{missing_year_count} years ({missing_share:.0%})"
+                    if missing_year_count is not None and missing_share is not None
+                    else "N/A"
+                ),
             ),
-        ),
-        ("Selected latest", str(selected_latest_year) if selected_latest_year is not None else "N/A"),
-        ("Indicator latest", str(overall_latest_year) if overall_latest_year is not None else "N/A"),
-    ]
-    for col, (label, value) in zip(detail_cols, details):
-        with col:
-            render_trend_stat(label, value)
+            ("Selected latest", str(selected_latest_year) if selected_latest_year is not None else "N/A"),
+            ("Indicator latest", str(overall_latest_year) if overall_latest_year is not None else "N/A"),
+        ]
+        for col, (label, value) in zip(detail_cols, details):
+            with col:
+                render_trend_stat(label, value)
 
 
 def build_country_trend_summary(country_df: pd.DataFrame, indicator: str) -> dict:
@@ -1080,15 +1097,7 @@ def render_historical_trends(timeseries_df: pd.DataFrame, selected_country: str)
         st.info("No historical indicators are available.")
         return
 
-    trend_col_country, trend_col_indicator, _ = st.columns([1, 1, 1.4])
-    with trend_col_country:
-        trend_country = st.selectbox(
-            "Country",
-            countries,
-            index=default_country_index,
-            key="trend_country",
-        )
-
+    trend_col_indicator, trend_col_country, trend_col_range = st.columns(3)
     with trend_col_indicator:
         selected_label = st.selectbox(
             "Indicator",
@@ -1101,6 +1110,21 @@ def render_historical_trends(timeseries_df: pd.DataFrame, selected_country: str)
         for indicator in available_indicators
         if INDICATOR_LABELS[indicator] == selected_label
     )
+
+    with trend_col_country:
+        trend_country = st.selectbox(
+            "Country",
+            countries,
+            index=default_country_index,
+            key="trend_country",
+        )
+    with trend_col_range:
+        selected_range = st.selectbox(
+            "Time range",
+            TIME_RANGE_OPTIONS,
+            index=0,
+            key="trend_time_range",
+        )
 
     chart_df = timeseries_df.loc[
         (timeseries_df["country_name"] == trend_country) &
@@ -1120,17 +1144,26 @@ def render_historical_trends(timeseries_df: pd.DataFrame, selected_country: str)
         st.info("Historical rows exist, but metric values are missing for this selection.")
         return
 
-    unit = get_trend_unit(trend_indicator)
-    st.caption(f"Unit: {unit}")
+    full_chart_df = chart_df.copy()
+    chart_df = filter_timeseries_by_range(chart_df, selected_range)
+    if chart_df.empty or chart_df["metric_value"].dropna().empty:
+        st.info("No valid historical values are available for the selected time range.")
+        return
+
+    render_trend_unit_note(trend_indicator)
+    chart_label = get_chart_metric_label(trend_indicator)
+    display_chart_df = chart_df.rename(columns={"metric_value": chart_label})
     st.line_chart(
-        chart_df,
+        display_chart_df,
         x="time_period",
-        y="metric_value",
+        y=chart_label,
         width="stretch",
     )
     render_trend_summary_stats(chart_df, trend_indicator)
-    render_historical_context(chart_df, trend_indicator)
     render_trend_data_quality(chart_df, timeseries_df, trend_indicator)
+    if selected_range == "Full available history":
+        recent_df = filter_timeseries_by_range(full_chart_df, "Last 10 years")
+        render_outlier_context_note(full_chart_df, recent_df)
 
 
 def render_compare_historical_trends(timeseries_df: pd.DataFrame, countries: list[str]) -> None:
@@ -1170,7 +1203,20 @@ def render_compare_historical_trends(timeseries_df: pd.DataFrame, countries: lis
         st.info("No historical indicators are available for comparison.")
         return
 
-    control_a, control_b, control_indicator = st.columns(3)
+    control_indicator, control_a, control_b, control_range = st.columns(4)
+    with control_indicator:
+        selected_label = st.selectbox(
+            "Indicator",
+            [INDICATOR_LABELS[indicator] for indicator in available_indicators],
+            key="trend_compare_indicator",
+        )
+
+    trend_indicator = next(
+        indicator
+        for indicator in available_indicators
+        if INDICATOR_LABELS[indicator] == selected_label
+    )
+
     with control_a:
         country_a = st.selectbox(
             "Country A",
@@ -1186,18 +1232,13 @@ def render_compare_historical_trends(timeseries_df: pd.DataFrame, countries: lis
             index=default_b_index,
             key="trend_compare_country_b",
         )
-    with control_indicator:
-        selected_label = st.selectbox(
-            "Indicator",
-            [INDICATOR_LABELS[indicator] for indicator in available_indicators],
-            key="trend_compare_indicator",
+    with control_range:
+        selected_range = st.selectbox(
+            "Time range",
+            TIME_RANGE_OPTIONS,
+            index=0,
+            key="trend_compare_time_range",
         )
-
-    trend_indicator = next(
-        indicator
-        for indicator in available_indicators
-        if INDICATOR_LABELS[indicator] == selected_label
-    )
 
     compare_df = timeseries_df.loc[
         (timeseries_df["country_name"].isin([country_a, country_b])) &
@@ -1212,6 +1253,8 @@ def render_compare_historical_trends(timeseries_df: pd.DataFrame, countries: lis
     compare_df["time_period"] = pd.to_numeric(compare_df["time_period"], errors="coerce")
     compare_df["metric_value"] = pd.to_numeric(compare_df["metric_value"], errors="coerce")
     compare_df = compare_df.dropna(subset=["time_period"]).sort_values(["time_period", "country_name"])
+    full_compare_df = compare_df.copy()
+    compare_df = filter_timeseries_by_range(compare_df, selected_range)
 
     chart_df = compare_df.pivot(
         index="time_period",
@@ -1223,7 +1266,7 @@ def render_compare_historical_trends(timeseries_df: pd.DataFrame, countries: lis
         st.info("Historical rows exist, but metric values are missing for this comparison.")
         return
 
-    st.caption(f"Unit: {get_trend_unit(trend_indicator)}")
+    render_trend_unit_note(trend_indicator)
     st.line_chart(chart_df, width="stretch")
 
     country_a_df = compare_df.loc[compare_df["country_name"] == country_a, ["time_period", "metric_value"]]
@@ -1235,6 +1278,9 @@ def render_compare_historical_trends(timeseries_df: pd.DataFrame, countries: lis
         country_b_df,
         trend_indicator,
     )
+    if selected_range == "Full available history":
+        recent_df = filter_timeseries_by_range(full_compare_df, "Last 10 years")
+        render_outlier_context_note(full_compare_df, recent_df)
 
 
 def render_comparison_verdict(comparison_df: pd.DataFrame, country_a: str, country_b: str) -> None:
@@ -1364,7 +1410,6 @@ def render_detailed_insights(country_data: pd.DataFrame) -> None:
                 with st.expander("More context", expanded=False):
                     render_metric_explanation(row["insight_category"])
                     st.write(row["why_it_matters"])
-                    st.caption(row["relative_rank_message"])
 
 
 def main():
