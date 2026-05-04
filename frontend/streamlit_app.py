@@ -1312,22 +1312,29 @@ def render_comparison_matrix(comparison_rows: list[dict], from_country: str, to_
             if idx > 0:
                 st.divider()
 
-            st.markdown(f"**{row['Metric']}**")
-            row_cols = st.columns([1, 1])
+            row_cols = st.columns([1.3, 1, 1, 0.9, 0.85])
             better_country = str(row["Better country"])
 
             with row_cols[0]:
+                st.markdown(f"**{row['Metric']}**")
+            with row_cols[1]:
                 render_metadata(from_country)
                 st.markdown(f"### {row['From country value']}")
-            with row_cols[1]:
+            with row_cols[2]:
                 render_metadata(to_country)
                 st.markdown(f"### {row['To country value']}")
+            with row_cols[3]:
+                render_metadata("Better")
+                if better_country in {from_country, to_country, "Equal"}:
+                    render_status_label(better_country)
+                else:
+                    render_metadata(better_country)
+            with row_cols[4]:
+                render_metadata("Difference")
+                st.markdown(f"**{row['Difference']}**")
 
-            if better_country in {from_country, to_country, "Equal"}:
-                render_status_label(f"Better signal: {better_country}")
-            else:
-                render_metadata(f"Better signal: {better_country}")
-            render_metadata(f"Difference: {row['Difference']}")
+            with st.expander(f"Details: {row['Metric']}", expanded=False):
+                render_metric_explanation(row["Category"])
 
 
 def render_country_profile(country_data: pd.DataFrame, selected_country: str) -> None:
@@ -1521,6 +1528,7 @@ def main():
 
         comparison_rows.append({
             "Metric": metric_label,
+            "Category": category,
             "From country value": format_metric_value(category, from_value),
             "To country value": format_metric_value(category, to_value),
             "Difference": (
