@@ -926,6 +926,78 @@ def render_trend_data_quality(chart_df: pd.DataFrame, timeseries_df: pd.DataFram
             render_trend_stat(label, value)
 
 
+def build_country_trend_summary(country_df: pd.DataFrame, indicator: str) -> dict:
+    valid_df = country_df.dropna(subset=["time_period", "metric_value"]).sort_values("time_period")
+    valid_year_count = valid_df["time_period"].nunique()
+    if valid_year_count == 0:
+        return {
+            "latest_year": "N/A",
+            "latest_value": "N/A",
+            "absolute_change": "N/A",
+            "valid_year_count": "0",
+            "has_minimum_values": False,
+        }
+
+    latest = valid_df.iloc[-1]
+    latest_value = float(latest["metric_value"])
+    absolute_change = "N/A"
+    has_minimum_values = valid_year_count >= 2
+    if has_minimum_values:
+        earliest = valid_df.iloc[0]
+        absolute_change = format_change_value(
+            indicator,
+            latest_value - float(earliest["metric_value"]),
+        )
+
+    return {
+        "latest_year": str(int(latest["time_period"])),
+        "latest_value": format_metric_value(indicator, latest_value),
+        "absolute_change": absolute_change,
+        "valid_year_count": str(valid_year_count),
+        "has_minimum_values": has_minimum_values,
+    }
+
+
+def render_historical_comparison_summary(
+    country_a: str,
+    country_b: str,
+    country_a_df: pd.DataFrame,
+    country_b_df: pd.DataFrame,
+    indicator: str,
+) -> None:
+    summary_a = build_country_trend_summary(country_a_df, indicator)
+    summary_b = build_country_trend_summary(country_b_df, indicator)
+
+    if not summary_a["has_minimum_values"] or not summary_b["has_minimum_values"]:
+        render_metadata("Coverage note: at least one selected country has fewer than two valid observations.")
+
+    stat_rows = [
+        ("Latest year", summary_a["latest_year"], summary_b["latest_year"]),
+        ("Latest value", summary_a["latest_value"], summary_b["latest_value"]),
+        ("Abs. change", summary_a["absolute_change"], summary_b["absolute_change"]),
+        ("Valid years", summary_a["valid_year_count"], summary_b["valid_year_count"]),
+    ]
+
+    header_cols = st.columns([1.2, 1, 1])
+    with header_cols[0]:
+        render_metadata("Measure")
+    with header_cols[1]:
+        render_metadata(country_a)
+    with header_cols[2]:
+        render_metadata(country_b)
+
+    for label, country_a_value, country_b_value in stat_rows:
+        row_cols = st.columns([1.2, 1, 1])
+        with row_cols[0]:
+            render_trend_stat(label, "")
+        with row_cols[1]:
+            render_trend_stat("", country_a_value)
+        with row_cols[2]:
+            render_trend_stat("", country_b_value)
+
+    render_metadata("Coverage note: missing years remain missing; series are shown on their available years.")
+
+
 def render_historical_trends(timeseries_df: pd.DataFrame, selected_country: str) -> None:
     render_section_header(
         "Historical trends",
@@ -1015,6 +1087,110 @@ def render_historical_trends(timeseries_df: pd.DataFrame, selected_country: str)
     )
     render_trend_summary_stats(chart_df, trend_indicator)
     render_trend_data_quality(chart_df, timeseries_df, trend_indicator)
+
+
+def render_compare_historical_trends(timeseries_df: pd.DataFrame, countries: list[str]) -> None:
+    render_section_header(
+        "Compare historical trends",
+        "Two-country historical context for one selected indicator.",
+        "Trend comparison",
+    )
+
+    if timeseries_df.empty:
+        st.info("Historical trend comparison data is not available yet.")
+        return
+
+    required_columns = {
+        "country_name",
+        "indicator",
+        "time_period",
+        "metric_value",
+    }
+    missing_columns = required_columns - set(timeseries_df.columns)
+    if missing_columns:
+        st.warning("Historical trend comparison is unavailable because the time-series file has an unexpected schema.")
+        return
+
+    trend_countries = sorted(timeseries_df["country_name"].dropna().unique())
+    if not trend_countries:
+        st.info("Historical trend comparison data is empty.")
+        return
+
+    country_options = [country for country in countries if country in trend_countries] or trend_countries
+    available_indicators = [
+        indicator
+        for indicator in INDICATOR_LABELS
+        if indicator in set(timeseries_df["indicator"].dropna())
+    ]
+    if not available_indicators:
+        st.info("No historical indicators are available for comparison.")
+        return
+
+    control_a, control_b, control_indicator = st.columns(3)
+    with control_a:
+        country_a = st.selectbox(
+            "Country A",
+            country_options,
+            index=0,
+            key="trend_compare_country_a",
+        )
+    with control_b:
+        default_b_index = 1 if len(country_options) > 1 else 0
+        country_b = st.selectbox(
+            "Country B",
+            country_options,
+            index=default_b_index,
+            key="trend_compare_country_b",
+        )
+    with control_indicator:
+        selected_label = st.selectbox(
+            "Indicator",
+            [INDICATOR_LABELS[indicator] for indicator in available_indicators],
+            key="trend_compare_indicator",
+        )
+
+    trend_indicator = next(
+        indicator
+        for indicator in available_indicators
+        if INDICATOR_LABELS[indicator] == selected_label
+    )
+
+    compare_df = timeseries_df.loc[
+        (timeseries_df["country_name"].isin([country_a, country_b])) &
+        (timeseries_df["indicator"] == trend_indicator),
+        ["country_name", "time_period", "metric_value"],
+    ].copy()
+
+    if compare_df.empty:
+        st.info("No historical rows are available for this country and indicator selection.")
+        return
+
+    compare_df["time_period"] = pd.to_numeric(compare_df["time_period"], errors="coerce")
+    compare_df["metric_value"] = pd.to_numeric(compare_df["metric_value"], errors="coerce")
+    compare_df = compare_df.dropna(subset=["time_period"]).sort_values(["time_period", "country_name"])
+
+    chart_df = compare_df.pivot(
+        index="time_period",
+        columns="country_name",
+        values="metric_value",
+    ).sort_index()
+
+    if chart_df.empty or chart_df.dropna(how="all").empty:
+        st.info("Historical rows exist, but metric values are missing for this comparison.")
+        return
+
+    st.caption(f"Unit: {get_trend_unit(trend_indicator)}")
+    st.line_chart(chart_df, width="stretch")
+
+    country_a_df = compare_df.loc[compare_df["country_name"] == country_a, ["time_period", "metric_value"]]
+    country_b_df = compare_df.loc[compare_df["country_name"] == country_b, ["time_period", "metric_value"]]
+    render_historical_comparison_summary(
+        country_a,
+        country_b,
+        country_a_df,
+        country_b_df,
+        trend_indicator,
+    )
 
 
 def render_comparison_verdict(comparison_df: pd.DataFrame, country_a: str, country_b: str) -> None:
@@ -1202,6 +1378,9 @@ def main():
     st.divider()
 
     render_historical_trends(timeseries_df, selected_country)
+    st.divider()
+
+    render_compare_historical_trends(timeseries_df, countries)
     st.divider()
 
     # Compare two countries
