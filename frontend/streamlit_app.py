@@ -1308,35 +1308,26 @@ def render_comparison_verdict(comparison_df: pd.DataFrame, country_a: str, count
 
 def render_comparison_matrix(comparison_rows: list[dict], from_country: str, to_country: str) -> None:
     with st.container(border=True):
-        header_cols = st.columns([1.45, 1, 1, 0.9])
-        with header_cols[0]:
-            render_metadata("Metric")
-        with header_cols[1]:
-            render_metadata(from_country)
-        with header_cols[2]:
-            render_metadata(to_country)
-        with header_cols[3]:
-            render_metadata("Better")
-
         for idx, row in enumerate(comparison_rows):
             if idx > 0:
                 st.divider()
 
-            row_cols = st.columns([1.45, 1, 1, 0.9])
+            st.markdown(f"**{row['Metric']}**")
+            row_cols = st.columns([1, 1])
             better_country = str(row["Better country"])
 
             with row_cols[0]:
-                st.markdown(f"**{row['Metric']}**")
-                render_metadata(str(row["Difference"]))
-            with row_cols[1]:
+                render_metadata(from_country)
                 st.markdown(f"### {row['From country value']}")
-            with row_cols[2]:
+            with row_cols[1]:
+                render_metadata(to_country)
                 st.markdown(f"### {row['To country value']}")
-            with row_cols[3]:
-                if better_country in {from_country, to_country, "Equal"}:
-                    render_status_label(better_country)
-                else:
-                    render_metadata(better_country)
+
+            if better_country in {from_country, to_country, "Equal"}:
+                render_status_label(f"Better signal: {better_country}")
+            else:
+                render_metadata(f"Better signal: {better_country}")
+            render_metadata(f"Difference: {row['Difference']}")
 
 
 def render_country_profile(country_data: pd.DataFrame, selected_country: str) -> None:
@@ -1466,12 +1457,6 @@ def main():
     render_detailed_insights(country_data)
     st.divider()
 
-    render_historical_trends(timeseries_df, selected_country)
-    st.divider()
-
-    render_compare_historical_trends(timeseries_df, countries)
-    st.divider()
-
     # Compare two countries
     render_section_header(
         "Country comparison",
@@ -1539,7 +1524,7 @@ def main():
             "From country value": format_metric_value(category, from_value),
             "To country value": format_metric_value(category, to_value),
             "Difference": (
-                f"{difference:+.2f}%" if difference is not None and category != "income_capacity"
+                f"{difference:+.2f} pp" if difference is not None and category != "income_capacity"
                 else f"{difference:+,.0f} PPS" if difference is not None
                 else "N/A"
             ),
@@ -1587,6 +1572,12 @@ def main():
 
     render_signal_sentence(summary_text)
     render_comparison_verdict(comparison_df, from_country, to_country)
+    st.divider()
+
+    render_historical_trends(timeseries_df, selected_country)
+    st.divider()
+
+    render_compare_historical_trends(timeseries_df, countries)
     st.divider()
 
     render_section_header(
