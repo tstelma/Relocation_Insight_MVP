@@ -48,7 +48,10 @@ def load_insights():
 def load_timeseries():
     if not TIMESERIES_DATA_PATH.exists():
         return pd.DataFrame()
-    return pd.read_csv(TIMESERIES_DATA_PATH)
+    try:
+        return pd.read_csv(TIMESERIES_DATA_PATH)
+    except (pd.errors.EmptyDataError, pd.errors.ParserError, OSError):
+        return pd.DataFrame()
 
 
 def apply_visual_style() -> None:
@@ -176,6 +179,12 @@ def format_metric_value(category: str, value: float | None) -> str:
     if category == "income_capacity":
         return f"{value:,.0f} PPS"
     return format_percentage(value)
+
+
+def get_trend_unit(category: str) -> str:
+    if category == "income_capacity":
+        return "PPS"
+    return "percent"
 
 
 def format_period_for_display(value) -> str:
@@ -481,7 +490,7 @@ def render_historical_trends(timeseries_df: pd.DataFrame, selected_country: str)
         st.info("Historical rows exist, but metric values are missing for this selection.")
         return
 
-    unit = chart_df["unit"].dropna().iloc[-1] if not chart_df["unit"].dropna().empty else "value"
+    unit = get_trend_unit(trend_indicator)
     st.caption(f"Unit: {unit}")
     st.line_chart(
         chart_df,
@@ -646,10 +655,10 @@ def main():
     render_country_profile(country_data, selected_country)
     st.divider()
 
-    render_historical_trends(timeseries_df, selected_country)
+    render_detailed_insights(country_data)
     st.divider()
 
-    render_detailed_insights(country_data)
+    render_historical_trends(timeseries_df, selected_country)
     st.divider()
 
     # Compare two countries
