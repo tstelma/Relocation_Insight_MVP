@@ -867,6 +867,49 @@ def render_trend_summary_stats(chart_df: pd.DataFrame, indicator: str) -> None:
             render_trend_stat(label, value)
 
 
+def get_historical_position_label(min_value: float, max_value: float, latest_value: float) -> str:
+    if min_value == max_value:
+        return "stable historical range"
+
+    position_ratio = (latest_value - min_value) / (max_value - min_value)
+    if position_ratio <= 0.15:
+        return "near historical low"
+    if position_ratio <= 0.35:
+        return "lower range"
+    if position_ratio <= 0.65:
+        return "middle range"
+    if position_ratio <= 0.85:
+        return "upper range"
+    return "near historical high"
+
+
+def render_historical_context(chart_df: pd.DataFrame, indicator: str) -> None:
+    valid_df = chart_df.dropna(subset=["time_period", "metric_value"]).copy()
+    if len(valid_df) < 2:
+        render_metadata("Historical context needs at least two valid values for the selected series.")
+        return
+
+    valid_df = valid_df.sort_values("time_period")
+    min_value = float(valid_df["metric_value"].min())
+    max_value = float(valid_df["metric_value"].max())
+    latest = valid_df.iloc[-1]
+    latest_value = float(latest["metric_value"])
+    latest_year = int(latest["time_period"])
+    position_label = get_historical_position_label(min_value, max_value, latest_value)
+
+    context_cols = st.columns(4)
+    stats = [
+        ("Latest value", format_metric_value(indicator, latest_value)),
+        ("Historical range", f"{format_metric_value(indicator, min_value)} to {format_metric_value(indicator, max_value)}"),
+        ("Current position", position_label),
+        ("Latest year", str(latest_year)),
+    ]
+
+    for col, (label, value) in zip(context_cols, stats):
+        with col:
+            render_trend_stat(label, value)
+
+
 def render_trend_data_quality(chart_df: pd.DataFrame, timeseries_df: pd.DataFrame, indicator: str) -> None:
     valid_df = chart_df.dropna(subset=["time_period", "metric_value"]).copy()
     valid_year_count = valid_df["time_period"].nunique()
@@ -1086,6 +1129,7 @@ def render_historical_trends(timeseries_df: pd.DataFrame, selected_country: str)
         width="stretch",
     )
     render_trend_summary_stats(chart_df, trend_indicator)
+    render_historical_context(chart_df, trend_indicator)
     render_trend_data_quality(chart_df, timeseries_df, trend_indicator)
 
 
