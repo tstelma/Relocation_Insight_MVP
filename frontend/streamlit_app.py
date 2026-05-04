@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import html
 from pathlib import Path
 
 
@@ -58,26 +59,303 @@ def apply_visual_style() -> None:
     st.markdown(
         """
         <style>
+        :root {
+            --app-bg: #090f1c;
+            --app-bg-2: #0d1424;
+            --surface: #111a2c;
+            --surface-raised: #151f33;
+            --surface-soft: rgba(21, 31, 51, 0.78);
+            --border: rgba(148, 163, 184, 0.18);
+            --border-strong: rgba(148, 163, 184, 0.28);
+            --text-main: #f4f7fb;
+            --text-soft: #d3dbe7;
+            --text-muted: #aebbd0;
+            --text-faint: #8ea0ba;
+            --accent: #8b9cff;
+            --accent-soft: rgba(139, 156, 255, 0.14);
+            --accent-border: rgba(139, 156, 255, 0.34);
+            --shadow: 0 18px 52px rgba(0, 0, 0, 0.28);
+        }
+        .stApp {
+            background:
+                radial-gradient(circle at 18% 0%, rgba(139, 156, 255, 0.16), transparent 28rem),
+                radial-gradient(circle at 88% 12%, rgba(45, 212, 191, 0.08), transparent 22rem),
+                linear-gradient(180deg, var(--app-bg) 0%, var(--app-bg-2) 48%, #09111f 100%);
+            color: var(--text-main);
+        }
         .block-container {
-            padding-top: 2rem;
-            padding-bottom: 3rem;
+            padding-top: 2.15rem;
+            padding-bottom: 3.4rem;
             max-width: 1180px;
         }
-        div[data-testid="stMetric"] {
-            background: var(--secondary-background-color, rgba(128, 128, 128, 0.08));
-            border: 1px solid rgba(128, 128, 128, 0.24);
-            border-radius: 8px;
-            padding: 0.55rem 0.75rem;
-            color: var(--text-color, inherit);
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 740;
+            margin-bottom: 0.2rem;
+            color: var(--text-main);
         }
-        div[data-testid="stMetric"] * {
-            color: inherit;
+        h2 {
+            font-size: 1.18rem;
+            font-weight: 700;
+            margin-top: 0.45rem;
+            margin-bottom: 0.18rem;
+            color: var(--text-main);
         }
-        div[data-testid="stAlert"] {
-            border-radius: 8px;
+        h3 {
+            font-size: 0.96rem;
+            font-weight: 680;
+            margin-bottom: 0.15rem;
+            color: var(--text-main);
         }
         h1, h2, h3 {
             letter-spacing: 0;
+        }
+        p, li, label, span {
+            color: inherit;
+        }
+        div[data-testid="stMarkdownContainer"] p,
+        div[data-testid="stMarkdownContainer"] li {
+            color: var(--text-soft);
+            font-size: 0.95rem;
+            line-height: 1.52;
+        }
+        div[data-testid="stMarkdownContainer"] strong {
+            color: var(--text-main);
+            font-weight: 700;
+        }
+        div[data-testid="stCaptionContainer"] {
+            color: var(--text-faint);
+            font-size: 0.83rem;
+            line-height: 1.35;
+        }
+        div[data-testid="stCaptionContainer"] * {
+            color: var(--text-faint);
+        }
+        div[data-testid="stMetric"] {
+            background: rgba(9, 15, 28, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0.58rem 0.72rem;
+            color: var(--text-main);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+        div[data-testid="stMetric"] * {
+            color: var(--text-main);
+        }
+        div[data-testid="stMetric"] label {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-weight: 620;
+        }
+        div[data-testid="stMetricValue"] {
+            color: var(--text-main);
+            font-size: 1.62rem;
+            font-weight: 780;
+        }
+        div[data-testid="stVerticalBlockBorderWrapper"] {
+            background: linear-gradient(180deg, rgba(21, 31, 51, 0.96), rgba(17, 26, 44, 0.96));
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            padding: 0.14rem;
+        }
+        div[data-testid="stExpander"] {
+            background: rgba(9, 15, 28, 0.46);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-soft);
+        }
+        div[data-testid="stAlert"] {
+            background: rgba(21, 31, 51, 0.92);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-soft);
+        }
+        hr {
+            margin: 1.65rem 0;
+            border-color: rgba(148, 163, 184, 0.16);
+        }
+        div[data-testid="stDownloadButton"] button,
+        div[data-testid="stPopover"] button {
+            background: var(--accent-soft);
+            border: 1px solid var(--accent-border);
+            border-radius: 999px;
+            color: #c8d0ff;
+            font-weight: 620;
+            min-height: 2rem;
+        }
+        div[data-testid="stDownloadButton"] button:hover,
+        div[data-testid="stPopover"] button:hover {
+            border-color: rgba(139, 156, 255, 0.62);
+            color: var(--accent);
+            background: rgba(139, 156, 255, 0.2);
+        }
+        div[data-testid="stSelectbox"] label,
+        div[data-testid="stSelectbox"] div {
+            color: var(--text-soft);
+        }
+        div[data-baseweb="select"] > div {
+            background: rgba(9, 15, 28, 0.76);
+            border-color: var(--border-strong);
+            border-radius: 12px;
+            color: var(--text-main);
+        }
+        div[data-testid="stDataFrame"] {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .app-hero {
+            padding: 1.25rem 1.35rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background:
+                linear-gradient(135deg, rgba(139, 156, 255, 0.12), transparent 42%),
+                rgba(17, 26, 44, 0.72);
+            box-shadow: var(--shadow);
+        }
+        .app-kicker {
+            color: var(--accent);
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            margin: 0 0 0.22rem;
+        }
+        .app-title {
+            color: var(--text-main);
+            font-size: 2.15rem;
+            font-weight: 780;
+            line-height: 1.08;
+            margin: 0;
+        }
+        .app-subtitle {
+            color: var(--text-muted);
+            font-size: 0.98rem;
+            line-height: 1.5;
+            max-width: 740px;
+            margin: 0.42rem 0 0;
+        }
+        .section-kicker {
+            color: var(--text-faint);
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            margin: 0 0 0.12rem;
+        }
+        .section-title {
+            color: var(--text-main);
+            font-size: 1.18rem;
+            font-weight: 740;
+            line-height: 1.2;
+            margin: 0 0 0.2rem;
+        }
+        .section-subtitle {
+            color: var(--text-muted);
+            font-size: 0.92rem;
+            line-height: 1.45;
+            margin: 0 0 0.7rem;
+        }
+        .signal-text {
+            color: var(--text-soft);
+            font-size: 0.95rem;
+            line-height: 1.45;
+            margin: 0.2rem 0 0.55rem;
+        }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            width: fit-content;
+            margin: 0.25rem 0 0.35rem;
+            padding: 0.22rem 0.58rem;
+            border: 1px solid var(--accent-border);
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: #dbe2ff;
+            font-size: 0.8rem;
+            font-weight: 720;
+            line-height: 1.2;
+        }
+        .metadata-text {
+            color: var(--text-faint);
+            font-size: 0.8rem;
+            line-height: 1.35;
+            margin-top: 0.35rem;
+        }
+        .country-eyebrow {
+            color: var(--text-faint);
+            font-size: 0.76rem;
+            font-weight: 720;
+            letter-spacing: 0.05em;
+            margin: 0 0 0.1rem;
+            text-transform: uppercase;
+        }
+        .country-title {
+            color: var(--text-main);
+            font-size: 2rem;
+            font-weight: 780;
+            letter-spacing: 0;
+            line-height: 1.08;
+            margin: 0 0 0.55rem;
+        }
+        .comparison-metric {
+            color: var(--text-main);
+            font-size: 0.95rem;
+            font-weight: 720;
+            line-height: 1.25;
+            margin-bottom: 0.4rem;
+        }
+        .comparison-value-label {
+            color: var(--text-faint);
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.12rem;
+            text-transform: uppercase;
+        }
+        .comparison-value-large {
+            color: var(--text-main);
+            font-size: 1.32rem;
+            font-weight: 780;
+            line-height: 1.15;
+            margin-bottom: 0.35rem;
+        }
+        .comparison-row {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr 0.9fr;
+            gap: 0.75rem;
+            align-items: center;
+            padding: 0.78rem 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+        .comparison-row:last-child {
+            border-bottom: 0;
+        }
+        .comparison-label {
+            color: var(--text-main);
+            font-weight: 700;
+            font-size: 0.92rem;
+        }
+        .comparison-value {
+            color: var(--text-soft);
+            font-size: 0.9rem;
+        }
+        .comparison-better {
+            color: #dbe2ff;
+            font-size: 0.86rem;
+            font-weight: 700;
+        }
+        @media (max-width: 760px) {
+            .app-title {
+                font-size: 1.72rem;
+            }
+            .comparison-row {
+                grid-template-columns: 1fr;
+                gap: 0.2rem;
+                padding: 0.9rem 0;
+            }
         }
         </style>
         """,
@@ -156,6 +434,106 @@ def make_compact_message(message: str, max_length: int = 130) -> str:
         return first_sentence
 
     return f"{first_sentence[: max_length - 3].rstrip()}..."
+
+
+def make_signal_sentence(row: pd.Series, max_length: int = 92) -> str:
+    compact_message = make_compact_message(row.get("main_message", ""), max_length=max_length)
+    if compact_message:
+        return compact_message
+
+    category = row.get("insight_category", "")
+    label = row.get("pressure_label", "signal")
+    if category == "income_capacity":
+        return f"Capacity signal is {label}."
+    return f"Pressure signal is {label}."
+
+
+def render_signal_sentence(text: str) -> None:
+    st.markdown(f'<p class="signal-text">{html.escape(text)}</p>', unsafe_allow_html=True)
+
+
+def render_status_label(text: str) -> None:
+    st.markdown(f'<span class="status-pill">{html.escape(text)}</span>', unsafe_allow_html=True)
+
+
+def render_metadata(text: str) -> None:
+    st.markdown(f'<p class="metadata-text">{html.escape(text)}</p>', unsafe_allow_html=True)
+
+
+def render_country_title(selected_country: str) -> None:
+    st.markdown(
+        f"""
+        <p class="country-eyebrow">Country profile</p>
+        <h2 class="country-title">{html.escape(selected_country)}</h2>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_comparison_value(label: str, value: str) -> None:
+    st.markdown(
+        f"""
+        <p class="comparison-value-label">{html.escape(label)}</p>
+        <p class="comparison-value-large">{html.escape(value)}</p>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_app_header() -> None:
+    st.markdown(
+        """
+        <section class="app-hero">
+            <p class="app-kicker">Relocation decision support</p>
+            <h1 class="app-title">Relocation Insight MVP</h1>
+            <p class="app-subtitle">
+                Compact financial pressure signals for selected European countries.
+                Use the profile first, then open details only where you need context.
+            </p>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_section_header(title: str, subtitle: str | None = None, kicker: str | None = None) -> None:
+    kicker_html = f'<p class="section-kicker">{html.escape(kicker)}</p>' if kicker else ""
+    subtitle_html = f'<p class="section-subtitle">{html.escape(subtitle)}</p>' if subtitle else ""
+    st.markdown(
+        f"""
+        <div>
+            {kicker_html}
+            <h2 class="section-title">{html.escape(title)}</h2>
+            {subtitle_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_indicator_context(category: str, why_it_matters=None, rank_message=None) -> None:
+    explanation = METRIC_EXPLANATIONS.get(category)
+    has_why = why_it_matters is not None and not pd.isna(why_it_matters)
+    has_rank = rank_message is not None and not pd.isna(rank_message)
+
+    if explanation is None and not has_why and not has_rank:
+        return
+
+    def write_context() -> None:
+        if explanation is not None:
+            st.write(explanation["definition"])
+            st.caption(explanation["rule"])
+        if has_why:
+            st.write(why_it_matters)
+        if has_rank:
+            st.caption(rank_message)
+
+    if hasattr(st, "popover"):
+        with st.popover("Details"):
+            write_context()
+    else:
+        with st.expander("Details", expanded=False):
+            write_context()
 
 
 def build_quick_overview(high_pressure_count: int) -> str:
@@ -274,11 +652,15 @@ def render_key_risk_driver(country_data: pd.DataFrame) -> None:
     pressure = best['pressure_label']
     
     st.metric(metric_label, metric_val)
-    render_metric_explanation(best["insight_category"])
-    st.caption(f"Key pressure signal: {pressure}")
-    st.caption(
-        f"{metric_label} is the strongest pressure signal because it has the highest pressure level "
-        f"among the tracked pressure indicators for this country."
+    render_status_label(f"{pressure} pressure")
+    render_signal_sentence(make_signal_sentence(best))
+    render_indicator_context(
+        best["insight_category"],
+        (
+            f"{metric_label} is the strongest pressure signal because it has the highest pressure level "
+            f"among the tracked pressure indicators for this country."
+        ),
+        best.get("relative_rank_message"),
     )
 
 
@@ -292,9 +674,13 @@ def render_income_capacity_signal(country_data: pd.DataFrame) -> None:
     level = row['pressure_label']
     
     st.metric("Income capacity", metric_val)
-    render_metric_explanation("income_capacity")
-    st.caption(f"Capacity signal: {level}")
-    st.caption("Higher values indicate stronger local purchasing power.")
+    render_status_label(f"{level} capacity")
+    render_signal_sentence(make_signal_sentence(row))
+    render_indicator_context(
+        "income_capacity",
+        "Higher values indicate stronger local purchasing power.",
+        row.get("relative_rank_message"),
+    )
 
 
 def render_research_checklist(country_data: pd.DataFrame) -> None:
@@ -391,8 +777,9 @@ def render_pressure_signals(country_data: pd.DataFrame) -> None:
         with cols[idx]:
             with st.container(border=True):
                 st.metric(metric_label, metric_val)
-                render_metric_explanation(category)
-                st.caption(f"Pressure signal: {row['pressure_label']}")
+                render_status_label(f"{row['pressure_label']} pressure")
+                render_signal_sentence(make_signal_sentence(row, max_length=82))
+                render_indicator_context(category, rank_message=row.get("relative_rank_message"))
 
 
 def render_methodology_notes() -> None:
@@ -413,9 +800,10 @@ def render_methodology_notes() -> None:
 
 
 def render_historical_trends(timeseries_df: pd.DataFrame, selected_country: str) -> None:
-    st.header("Historical trends")
-    st.caption(
-        "Historical charts are shown for context only. Trend interpretation will be added later with data-quality checks."
+    render_section_header(
+        "Historical trends",
+        "Context only. Trend interpretation will be added later with data-quality checks.",
+        "Context",
     )
 
     if timeseries_df.empty:
@@ -450,7 +838,7 @@ def render_historical_trends(timeseries_df: pd.DataFrame, selected_country: str)
         st.info("No historical indicators are available.")
         return
 
-    trend_col_country, trend_col_indicator = st.columns(2)
+    trend_col_country, trend_col_indicator, _ = st.columns([1, 1, 1.4])
     with trend_col_country:
         trend_country = st.selectbox(
             "Country",
@@ -496,13 +884,13 @@ def render_historical_trends(timeseries_df: pd.DataFrame, selected_country: str)
         chart_df,
         x="time_period",
         y="metric_value",
-        use_container_width=True,
+        width="stretch",
     )
 
 
 def render_comparison_verdict(comparison_df: pd.DataFrame, country_a: str, country_b: str) -> None:
     if comparison_df.empty:
-        st.write("_Comparison verdict: insufficient data for a directional signal based only on the current MVP indicators._")
+        render_signal_sentence("Comparison verdict: insufficient data for a directional signal based only on the current MVP indicators.")
         return
 
     a_wins = (comparison_df["Better country"] == country_a).sum()
@@ -510,7 +898,7 @@ def render_comparison_verdict(comparison_df: pd.DataFrame, country_a: str, count
     valid_rows = comparison_df[comparison_df["Better country"].isin([country_a, country_b, "Equal"])]
 
     if valid_rows.empty:
-        st.write("_Comparison verdict: insufficient data for a directional signal based only on the current MVP indicators._")
+        render_signal_sentence("Comparison verdict: insufficient data for a directional signal based only on the current MVP indicators.")
         return
 
     if a_wins > b_wins:
@@ -520,37 +908,64 @@ def render_comparison_verdict(comparison_df: pd.DataFrame, country_a: str, count
     else:
         verdict = "The comparison is mixed across the available indicators."
 
-    st.write(f"**Comparison verdict:** {verdict} _This is directional only and based only on the current MVP indicators._")
+    render_signal_sentence(f"Comparison verdict: {verdict} This is directional only and based only on the current MVP indicators.")
+
+
+def render_comparison_matrix(comparison_rows: list[dict], from_country: str, to_country: str) -> None:
+    with st.container(border=True):
+        header_cols = st.columns([1.45, 1, 1, 0.9])
+        with header_cols[0]:
+            render_metadata("Metric")
+        with header_cols[1]:
+            render_metadata(from_country)
+        with header_cols[2]:
+            render_metadata(to_country)
+        with header_cols[3]:
+            render_metadata("Better")
+
+        for idx, row in enumerate(comparison_rows):
+            if idx > 0:
+                st.divider()
+
+            row_cols = st.columns([1.45, 1, 1, 0.9])
+            better_country = str(row["Better country"])
+
+            with row_cols[0]:
+                st.markdown(f"**{row['Metric']}**")
+                render_metadata(str(row["Difference"]))
+            with row_cols[1]:
+                st.markdown(f"### {row['From country value']}")
+            with row_cols[2]:
+                st.markdown(f"### {row['To country value']}")
+            with row_cols[3]:
+                if better_country in {from_country, to_country, "Equal"}:
+                    render_status_label(better_country)
+                else:
+                    render_metadata(better_country)
 
 
 def render_country_profile(country_data: pd.DataFrame, selected_country: str) -> None:
-    overall_pressure = get_overall_pressure(country_data)
-
-    st.header("Country Profile")
-
     col_left, col_right = st.columns([3, 1])
     with col_left:
-        st.subheader(selected_country)
-        st.markdown(f"**Overall assessment:** {overall_pressure}")
+        render_country_title(selected_country)
     with col_right:
         render_country_profile_export(country_data, selected_country)
 
     st.markdown("#### Key signals")
     render_pressure_signals(country_data)
 
-    col_key, col_income, col_next = st.columns([1, 1, 1.2])
+    col_key, col_income = st.columns(2)
     with col_key:
-        st.markdown("#### Key risk driver")
-        render_key_risk_driver(country_data)
+        with st.container(border=True):
+            st.markdown("#### Key risk")
+            render_key_risk_driver(country_data)
 
     with col_income:
-        st.markdown("#### Income capacity")
-        render_income_capacity_signal(country_data)
+        with st.container(border=True):
+            st.markdown("#### Income")
+            render_income_capacity_signal(country_data)
 
-    with col_next:
-        st.markdown("#### Suggested next checks")
-        render_research_checklist(country_data)
-
+    overall_pressure = get_overall_pressure(country_data)
     interpretation_map = {
         "Generally low pressure": "All tracked indicators are low, suggesting a stable financial profile.",
         "Price-stable, social risk visible": "Prices are relatively stable, but poverty risk is showing some social pressure.",
@@ -568,8 +983,11 @@ def render_country_profile(country_data: pd.DataFrame, selected_country: str) ->
 
 
 def render_detailed_insights(country_data: pd.DataFrame) -> None:
-    st.header("Detailed indicator insights")
-    st.caption("Compact signal cards. Open a card note for context and source details.")
+    render_section_header(
+        "Indicator details",
+        "Compact signal cards. Open details only when you need context.",
+        "Drill-down",
+    )
 
     card_columns = st.columns(2)
     for idx, (_, row) in enumerate(country_data.iterrows()):
@@ -580,23 +998,22 @@ def render_detailed_insights(country_data: pd.DataFrame) -> None:
 
         with card_columns[idx % 2]:
             with st.container(border=True):
-                top_left, top_right = st.columns([1.5, 1])
+                top_left, top_right = st.columns([1.35, 1])
                 with top_left:
                     st.markdown(f"**{metric_label}**")
                     st.caption(category_label)
                 with top_right:
-                    st.markdown(f"**{row['pressure_label']}**")
-                    st.caption("Signal label")
+                    render_status_label(str(row["pressure_label"]))
 
                 st.metric("Value", metric_value)
-                render_metric_explanation(row["insight_category"])
 
                 if compact_message:
-                    st.caption(compact_message)
+                    render_signal_sentence(compact_message)
 
-                st.caption(f"{row['source']} | {row['confidence_level']} confidence")
+                render_metadata(f"{row['source']} | {row['confidence_level']} confidence")
 
                 with st.expander("More context", expanded=False):
+                    render_metric_explanation(row["insight_category"])
                     st.write(row["why_it_matters"])
                     st.caption(row["relative_rank_message"])
 
@@ -604,8 +1021,7 @@ def render_detailed_insights(country_data: pd.DataFrame) -> None:
 def main():
     apply_visual_style()
 
-    st.title("Relocation Insight MVP")
-    st.caption("Early-stage research signals for selected European countries, based on current MVP indicators.")
+    render_app_header()
 
     # Load data
     try:
@@ -635,11 +1051,13 @@ def main():
 
     # Country selector
     countries = sorted(df['country_name'].unique())
-    selected_country = st.selectbox(
-        "Select a country to view insights:",
-        countries,
-        index=0
-    )
+    selector_col, _ = st.columns([1.1, 2.4])
+    with selector_col:
+        selected_country = st.selectbox(
+            "Country",
+            countries,
+            index=0
+        )
 
     # Filter data for selected country
     country_data = df[df['country_name'] == selected_country]
@@ -648,10 +1066,6 @@ def main():
         st.warning(f"No data available for {selected_country}")
         return
 
-    high_pressure_count = country_data["pressure_label"].isin(["High", "Very High"]).sum()
-    high_pressure_text = build_quick_overview(high_pressure_count)
-    st.caption(f"Quick overview: {high_pressure_text}")
-    st.divider()
     render_country_profile(country_data, selected_country)
     st.divider()
 
@@ -662,10 +1076,14 @@ def main():
     st.divider()
 
     # Compare two countries
-    st.header("Country comparison")
+    render_section_header(
+        "Country comparison",
+        "Directional comparison across the current MVP indicators.",
+        "Compare",
+    )
     
     # Country selectors
-    comp_col1, comp_col2 = st.columns(2)
+    comp_col1, comp_col2, _ = st.columns([1, 1, 1.2])
     with comp_col1:
         from_country = st.selectbox(
             "From country",
@@ -732,16 +1150,18 @@ def main():
         })
 
     comparison_df = pd.DataFrame(comparison_rows)
-    st.dataframe(
-        comparison_df,
-        use_container_width=True,
-        hide_index=True,
-    )
-    st.caption("Lower values indicate lower pressure; higher values indicate stronger income capacity.")
-    st.divider()
+    render_comparison_matrix(comparison_rows, from_country, to_country)
+    render_metadata("Lower pressure is better; higher income capacity is better.")
+
+    with st.expander("Comparison table", expanded=False):
+        st.dataframe(
+            comparison_df,
+            width="stretch",
+            hide_index=True,
+        )
 
     # Comparison summary
-    st.subheader("Comparison summary and verdict")
+    st.markdown("#### Summary")
     inflation_better = comparison_rows[0]["Better country"]
     housing_better = comparison_rows[1]["Better country"]
     poverty_better = comparison_rows[2]["Better country"]
@@ -760,7 +1180,7 @@ def main():
     else:
         tradeoff_label = "Mixed trade-off"
 
-    st.markdown(f"**Trade-off label:** {tradeoff_label}")
+    render_status_label(tradeoff_label)
 
     if (inflation_better == housing_better == poverty_better == income_better and
         inflation_better not in ["Equal", "Data unavailable"]):
@@ -768,11 +1188,15 @@ def main():
     else:
         summary_text = "This comparison shows a mixed trade-off across the tracked indicators."
 
-    st.write(summary_text)
+    render_signal_sentence(summary_text)
     render_comparison_verdict(comparison_df, from_country, to_country)
     st.divider()
 
-    st.header("Methodology / Disclaimer")
+    render_section_header(
+        "Methodology / Disclaimer",
+        "Kept collapsed so methodology does not dominate the main workflow.",
+        "Reference",
+    )
     render_methodology_notes()
     with st.expander("MVP limitations", expanded=False):
         st.write(
@@ -784,7 +1208,7 @@ def main():
     with st.expander("Raw data", expanded=False):
         st.dataframe(
             country_data,
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
 
