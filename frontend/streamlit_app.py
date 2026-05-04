@@ -322,6 +322,22 @@ def apply_visual_style() -> None:
             line-height: 1.15;
             margin-bottom: 0.35rem;
         }
+        .trend-stat-label {
+            color: var(--text-faint);
+            font-size: 0.72rem;
+            font-weight: 720;
+            letter-spacing: 0.04em;
+            line-height: 1.2;
+            margin: 0.2rem 0 0.12rem;
+            text-transform: uppercase;
+        }
+        .trend-stat-value {
+            color: var(--text-main);
+            font-size: 1rem;
+            font-weight: 740;
+            line-height: 1.2;
+            margin: 0 0 0.25rem;
+        }
         .comparison-row {
             display: grid;
             grid-template-columns: 1.2fr 1fr 1fr 0.9fr;
@@ -480,6 +496,16 @@ def render_comparison_value(label: str, value: str) -> None:
     )
 
 
+def render_trend_stat(label: str, value: str) -> None:
+    st.markdown(
+        f"""
+        <p class="trend-stat-label">{html.escape(label)}</p>
+        <p class="trend-stat-value">{html.escape(value)}</p>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_app_header() -> None:
     st.markdown(
         """
@@ -557,6 +583,14 @@ def format_metric_value(category: str, value: float | None) -> str:
     if category == "income_capacity":
         return f"{value:,.0f} PPS"
     return format_percentage(value)
+
+
+def format_change_value(category: str, value: float | None) -> str:
+    if pd.isna(value):
+        return "N/A"
+    if category == "income_capacity":
+        return f"{value:+,.0f} PPS"
+    return f"{value:+.2f}%"
 
 
 def get_trend_unit(category: str) -> str:
@@ -799,6 +833,40 @@ def render_methodology_notes() -> None:
         )
 
 
+def render_trend_summary_stats(chart_df: pd.DataFrame, indicator: str) -> None:
+    valid_df = chart_df.dropna(subset=["time_period", "metric_value"]).copy()
+    if len(valid_df) < 2:
+        render_metadata("Trend summary needs at least two valid values for the selected series.")
+        return
+
+    valid_df = valid_df.sort_values("time_period")
+    earliest = valid_df.iloc[0]
+    latest = valid_df.iloc[-1]
+    earliest_year = int(earliest["time_period"])
+    latest_year = int(latest["time_period"])
+    earliest_value = float(earliest["metric_value"])
+    latest_value = float(latest["metric_value"])
+    absolute_change = latest_value - earliest_value
+    relative_change = None
+    if earliest_value != 0:
+        relative_change = (absolute_change / abs(earliest_value)) * 100
+
+    stat_cols = st.columns(7)
+    stats = [
+        ("Earliest year", str(earliest_year)),
+        ("Latest year", str(latest_year)),
+        ("Earliest value", format_metric_value(indicator, earliest_value)),
+        ("Latest value", format_metric_value(indicator, latest_value)),
+        ("Abs. change", format_change_value(indicator, absolute_change)),
+        ("Rel. change", f"{relative_change:+.1f}%" if relative_change is not None else "N/A"),
+        ("Valid years", str(valid_df["time_period"].nunique())),
+    ]
+
+    for col, (label, value) in zip(stat_cols, stats):
+        with col:
+            render_trend_stat(label, value)
+
+
 def render_historical_trends(timeseries_df: pd.DataFrame, selected_country: str) -> None:
     render_section_header(
         "Historical trends",
@@ -886,6 +954,7 @@ def render_historical_trends(timeseries_df: pd.DataFrame, selected_country: str)
         y="metric_value",
         width="stretch",
     )
+    render_trend_summary_stats(chart_df, trend_indicator)
 
 
 def render_comparison_verdict(comparison_df: pd.DataFrame, country_a: str, country_b: str) -> None:
