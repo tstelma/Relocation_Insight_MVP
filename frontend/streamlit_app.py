@@ -867,6 +867,65 @@ def render_trend_summary_stats(chart_df: pd.DataFrame, indicator: str) -> None:
             render_trend_stat(label, value)
 
 
+def render_trend_data_quality(chart_df: pd.DataFrame, timeseries_df: pd.DataFrame, indicator: str) -> None:
+    valid_df = chart_df.dropna(subset=["time_period", "metric_value"]).copy()
+    valid_year_count = valid_df["time_period"].nunique()
+
+    selected_latest_year = None
+    missing_year_count = None
+    missing_share = None
+    if valid_year_count > 0:
+        valid_years = sorted(int(year) for year in valid_df["time_period"].dropna().unique())
+        selected_latest_year = valid_years[-1]
+        observed_year_count = valid_years[-1] - valid_years[0] + 1
+        missing_year_count = max(observed_year_count - valid_year_count, 0)
+        missing_share = missing_year_count / observed_year_count if observed_year_count else 0
+
+    indicator_df = timeseries_df.loc[timeseries_df["indicator"] == indicator, ["time_period", "metric_value"]].copy()
+    indicator_df["time_period"] = pd.to_numeric(indicator_df["time_period"], errors="coerce")
+    indicator_df["metric_value"] = pd.to_numeric(indicator_df["metric_value"], errors="coerce")
+    indicator_valid_df = indicator_df.dropna(subset=["time_period", "metric_value"])
+    overall_latest_year = (
+        int(indicator_valid_df["time_period"].max())
+        if not indicator_valid_df.empty
+        else None
+    )
+
+    is_stale = (
+        selected_latest_year is not None and
+        overall_latest_year is not None and
+        selected_latest_year < overall_latest_year
+    )
+
+    if valid_year_count < 5:
+        quality_label = "Insufficient trend data"
+    elif is_stale:
+        quality_label = "Stale latest data"
+    elif missing_share is not None and missing_share > 0.4:
+        quality_label = "Limited trend coverage"
+    else:
+        quality_label = "Suitable for cautious trend interpretation"
+
+    render_status_label(quality_label)
+    detail_cols = st.columns(4)
+    details = [
+        ("Valid years", str(valid_year_count)),
+        (
+            "Missing coverage",
+            (
+                f"{missing_year_count} years ({missing_share:.0%})"
+                if missing_year_count is not None and missing_share is not None
+                else "N/A"
+            ),
+        ),
+        ("Selected latest", str(selected_latest_year) if selected_latest_year is not None else "N/A"),
+        ("Indicator latest", str(overall_latest_year) if overall_latest_year is not None else "N/A"),
+    ]
+    for col, (label, value) in zip(detail_cols, details):
+        with col:
+            render_trend_stat(label, value)
+
+
 def render_historical_trends(timeseries_df: pd.DataFrame, selected_country: str) -> None:
     render_section_header(
         "Historical trends",
@@ -955,6 +1014,7 @@ def render_historical_trends(timeseries_df: pd.DataFrame, selected_country: str)
         width="stretch",
     )
     render_trend_summary_stats(chart_df, trend_indicator)
+    render_trend_data_quality(chart_df, timeseries_df, trend_indicator)
 
 
 def render_comparison_verdict(comparison_df: pd.DataFrame, country_a: str, country_b: str) -> None:
