@@ -13,8 +13,9 @@ st.set_page_config(
 # Data loading
 APP_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = APP_DIR.parent
-DATA_PATH = PROJECT_ROOT / "data" / "clean" / "all_mvp_insights.csv"
-TIMESERIES_DATA_PATH = PROJECT_ROOT / "data" / "clean" / "all_mvp_timeseries.csv"
+DATA_DIR = PROJECT_ROOT / "data" / "clean"
+DATA_PATH = DATA_DIR / "all_mvp_insights.csv"
+TIMESERIES_DATA_PATH = DATA_DIR / "all_mvp_timeseries.csv"
 REQUIRED_DATA_PATHS = (DATA_PATH, TIMESERIES_DATA_PATH)
 
 INSIGHTS_REQUIRED_COLUMNS = {
@@ -116,9 +117,18 @@ def format_repo_path(path: Path) -> str:
         return path.as_posix()
 
 
+def format_resolved_path(path: Path) -> str:
+    return path.resolve(strict=False).as_posix()
+
+
 def show_data_file_error(missing_paths: list[Path]) -> None:
     st.error("Required CSV data files are missing.")
-    st.markdown("\n".join(f"- `{format_repo_path(path)}`" for path in missing_paths))
+    st.markdown(
+        "\n".join(
+            f"- `{format_repo_path(path)}` resolved to `{format_resolved_path(path)}`"
+            for path in missing_paths
+        )
+    )
     st.info(
         "Run `python data_pipeline/run_mvp_pipeline.py` locally, then commit the generated "
         "`data/clean/` CSV files before deploying."
