@@ -69,6 +69,11 @@ def run_indicator_export(indicator_key: str) -> None:
             "net_earnings_capacity export produced all NaN values. "
             "Please verify the earn_nt_net filters in data_pipeline/config/datasets.yml."
         )
+    if indicator_key == "employment_strength" and combined_df["value"].isna().all():
+        raise RuntimeError(
+            "employment_strength export produced all NaN values. "
+            "Please verify the lfsi_emp_a filters in data_pipeline/config/datasets.yml."
+        )
 
     print(f"\nLatest row per country for {indicator_key}:")
     latest_rows = (
@@ -129,6 +134,19 @@ def run_indicator_export(indicator_key: str) -> None:
         print(f"Saved net earnings capacity insights to: {insights_output_path}")
         print("\nNet earnings capacity insights preview:")
         print(insights_df[["country_code", "country_name", "title", "annual_net_earnings", "pressure_label"]])
+
+    # Generate employment strength insights if employment_strength was exported
+    if indicator_key == "employment_strength":
+        from insights.generate_employment_strength_insights import generate_employment_strength_insight_cards
+
+        print(f"\nGenerating employment strength insights...")
+        insights_df = generate_employment_strength_insight_cards(output_path)
+        insights_output_path = CLEAN_DATA_DIR / "employment_strength_insights.csv"
+        insights_df.to_csv(insights_output_path, index=False)
+
+        print(f"Saved employment strength insights to: {insights_output_path}")
+        print("\nEmployment strength insights preview:")
+        print(insights_df[["country_code", "country_name", "title", "employment_rate", "pressure_label"]])
 
 
 if __name__ == "__main__":

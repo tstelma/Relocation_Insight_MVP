@@ -61,13 +61,19 @@ def main():
         "Running net earnings capacity pipeline"
     )
 
-    # Step 6: Export standardized historical time-series
+    # Step 6: Run employment strength pipeline
+    run_command(
+        [sys.executable, "data_pipeline/run_indicator_export.py", "employment_strength"],
+        "Running employment strength pipeline"
+    )
+
+    # Step 7: Export standardized historical time-series
     run_command(
         [sys.executable, "data_pipeline/transform/export_timeseries.py"],
         "Exporting standardized MVP time-series"
     )
 
-    # Step 7: Combine MVP insights
+    # Step 8: Combine MVP insights
     run_command(
         [sys.executable, "data_pipeline/insights/combine_insights.py"],
         "Combining MVP insights"

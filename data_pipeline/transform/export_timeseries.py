@@ -65,6 +65,14 @@ INDICATOR_EXPORTS = [
         "better_direction": "higher_is_better",
         "source": "Eurostat earn_nt_net",
     },
+    {
+        "indicator": "employment_strength",
+        "input_file": "employment_strength_mvp_countries.csv",
+        "value_column": "value",
+        "unit": "percent",
+        "better_direction": "higher_is_better",
+        "source": "Eurostat lfsi_emp_a",
+    },
 ]
 
 

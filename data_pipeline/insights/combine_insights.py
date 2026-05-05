@@ -11,6 +11,7 @@ HOUSING_INSIGHTS_PATH = Path("data") / "clean" / "housing_pressure_insights.csv"
 POVERTY_INSIGHTS_PATH = Path("data") / "clean" / "poverty_pressure_insights.csv"
 INCOME_CAPACITY_INSIGHTS_PATH = Path("data") / "clean" / "income_capacity_insights.csv"
 NET_EARNINGS_CAPACITY_INSIGHTS_PATH = Path("data") / "clean" / "net_earnings_capacity_insights.csv"
+EMPLOYMENT_STRENGTH_INSIGHTS_PATH = Path("data") / "clean" / "employment_strength_insights.csv"
 OUTPUT_PATH = Path("data") / "clean" / "all_mvp_insights.csv"
 
 
@@ -40,6 +41,11 @@ def combine_insights() -> pd.DataFrame:
     net_earnings_capacity_df["insight_category"] = "net_earnings_capacity"
     net_earnings_capacity_df = net_earnings_capacity_df.rename(columns={"annual_net_earnings": "metric_value"})
 
+    # Read employment strength insights
+    employment_strength_df = pd.read_csv(EMPLOYMENT_STRENGTH_INSIGHTS_PATH)
+    employment_strength_df["insight_category"] = "employment_strength"
+    employment_strength_df = employment_strength_df.rename(columns={"employment_rate": "metric_value"})
+
     # Combine the dataframes
     combined_df = pd.concat(
         [
@@ -48,6 +54,7 @@ def combine_insights() -> pd.DataFrame:
             poverty_df,
             income_capacity_df,
             net_earnings_capacity_df,
+            employment_strength_df,
         ],
         ignore_index=True,
     )

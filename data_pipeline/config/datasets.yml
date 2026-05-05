@@ -78,3 +78,19 @@ datasets:
       estruct: NET
       ecase: P1_NCH_AW100
       lang: en
+
+  employment_strength:
+    source: eurostat
+    dataset_code: lfsi_emp_a
+    frequency: yearly
+    geography_level: country
+    update_job: yearly
+    used_for:
+      - employment_strength
+    filters:
+      freq: A
+      indic_em: EMP_LFS
+      sex: T
+      age: Y20-64
+      unit: PC_POP
+      lang: en
