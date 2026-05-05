@@ -37,17 +37,33 @@ Historical charts are factual/contextual only. The app does not use forecast, pr
 
 ## App Preview
 
+### App Overview
+![App overview](docs/screenshots/01_app_overview.png)
+*App overview.*
+
 ### Country Profile
-![Country Profile](docs/screenshots/country_profile.png)
-*Individual country assessment showing pressure indicators, income capacity, and net earnings capacity.*
+![Country profile and key signals](docs/screenshots/02_country_profile.png)
+*Country profile and key signals.*
+
+### Top 5 by Indicator
+![Top 5 by indicator](docs/screenshots/03_top5_by_indicator.png)
+*Top 5 by indicator.*
 
 ### Country Comparison
-![Country Comparison](docs/screenshots/country_comparison.png)
-*Compact side-by-side comparison of two countries across the current MVP indicators.*
+![Country comparison](docs/screenshots/04_country_comparison.png)
+*Country comparison.*
 
-### Methodology Notes
-![Methodology Notes](docs/screenshots/methodology_notes.png)
-*Data sources and methodology details for transparency.*
+### Historical Trends
+![Historical trends](docs/screenshots/05_historical_trends.png)
+*Historical trends.*
+
+### Trend Comparison
+![Cross-country historical trend comparison](docs/screenshots/06_trend_comparison.png)
+*Cross-country historical trend comparison.*
+
+### Indicator Glossary
+![Indicator glossary / methodology](docs/screenshots/07_indicator_glossary.png)
+*Indicator glossary / methodology.*
 
 ## Quick Start
 
