@@ -294,11 +294,25 @@ def apply_visual_style() -> None:
         }
         .country-title {
             color: var(--text-main);
-            font-size: 2rem;
-            font-weight: 780;
+            font-size: 2.38rem;
+            font-weight: 820;
             letter-spacing: 0;
             line-height: 1.08;
-            margin: 0 0 0.55rem;
+            margin: 0.18rem 0 0.35rem;
+        }
+        .country-title-flag,
+        .top-signal-flag {
+            display: inline-block;
+            border-radius: 3px;
+            object-fit: cover;
+            vertical-align: middle;
+            box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.24);
+        }
+        .country-title-flag {
+            margin-right: 0.48rem;
+        }
+        .top-signal-flag {
+            margin-right: 0.34rem;
         }
         .comparison-metric {
             color: var(--text-main);
@@ -363,6 +377,69 @@ def apply_visual_style() -> None:
             font-size: 0.86rem;
             font-weight: 700;
         }
+        .top-signal-card-title {
+            color: var(--text-main);
+            font-size: 0.94rem;
+            font-weight: 760;
+            line-height: 1.2;
+            margin: 0 0 0.06rem;
+        }
+        .top-signal-card-subtitle {
+            color: var(--text-faint);
+            font-size: 0.74rem;
+            line-height: 1.3;
+            margin: 0 0 0.22rem;
+        }
+        .top-signal-row {
+            display: grid;
+            grid-template-columns: 1.85rem minmax(7rem, 0.78fr) max-content;
+            gap: 0.34rem;
+            align-items: center;
+            max-width: 25rem;
+            padding: 0.26rem 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+        .top-signal-row:last-child {
+            border-bottom: 0;
+            padding-bottom: 0.05rem;
+        }
+        .top-signal-rank {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.62rem;
+            height: 1.62rem;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 999px;
+            background: rgba(9, 15, 28, 0.46);
+            color: var(--text-main);
+            font-size: 0.92rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .top-signal-country {
+            color: var(--text-main);
+            font-size: 0.96rem;
+            font-weight: 800;
+            line-height: 1.22;
+            overflow-wrap: anywhere;
+        }
+        .top-signal-value {
+            color: var(--text-main);
+            font-size: 0.92rem;
+            font-weight: 800;
+            line-height: 1.2;
+            white-space: nowrap;
+            text-align: right;
+        }
+        .top-signal-panel {
+            margin-top: 0.1rem;
+        }
+        .top-signal-panel div[data-testid="stTabs"] button {
+            padding: 0.25rem 0.42rem;
+            min-height: 1.9rem;
+            font-size: 0.78rem;
+        }
         @media (max-width: 760px) {
             .app-title {
                 font-size: 1.72rem;
@@ -372,11 +449,27 @@ def apply_visual_style() -> None:
                 gap: 0.2rem;
                 padding: 0.9rem 0;
             }
+            .top-signal-row {
+                grid-template-columns: 1.85rem minmax(0, 1fr) max-content;
+                max-width: none;
+            }
         }
         </style>
         """,
         unsafe_allow_html=True,
     )
+
+
+FLAG_CODE_OVERRIDES = {
+    "EL": "gr",
+}
+
+TOP_SIGNAL_CONFIG = [
+    ("inflation_pressure", "Inflation", "Lowest inflation pressure", "Lower current inflation ranks first."),
+    ("housing_pressure", "Housing", "Lowest housing pressure", "Lower housing overburden ranks first."),
+    ("poverty_pressure", "Poverty", "Lowest poverty pressure", "Lower poverty risk ranks first."),
+    ("income_capacity", "Income", "Strongest income capacity", "Higher PPS income capacity ranks first."),
+]
 
 
 def to_ordinal(value: int) -> str:
@@ -476,11 +569,19 @@ def render_metadata(text: str) -> None:
     st.markdown(f'<p class="metadata-text">{html.escape(text)}</p>', unsafe_allow_html=True)
 
 
-def render_country_title(selected_country: str) -> None:
+def get_country_code_for_name(df: pd.DataFrame, country_name: str) -> str | None:
+    values = df.loc[df["country_name"].eq(country_name), "country_code"].dropna()
+    if values.empty:
+        return None
+    return str(values.iloc[0])
+
+
+def render_country_title(selected_country: str, country_code: str | None = None) -> None:
+    flag_html = get_flag_img_html(country_code, selected_country, css_class="country-title-flag") if country_code else ""
     st.markdown(
         f"""
         <p class="country-eyebrow">Country profile</p>
-        <h2 class="country-title">{html.escape(selected_country)}</h2>
+        <h2 class="country-title">{flag_html}{html.escape(selected_country)}</h2>
         """,
         unsafe_allow_html=True,
     )
@@ -504,6 +605,104 @@ def render_trend_stat(label: str, value: str) -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
+def get_flag_code(country_code) -> str | None:
+    if pd.isna(country_code):
+        return None
+
+    code = str(country_code).strip().upper()
+    if not code:
+        return None
+    return FLAG_CODE_OVERRIDES.get(code, code.lower())
+
+
+def get_flag_img_html(
+    country_code,
+    country_name: str,
+    size: str = "24x18",
+    css_class: str = "top-signal-flag",
+) -> str:
+    flag_code = get_flag_code(country_code)
+    if flag_code is None:
+        return ""
+
+    width, height = size.split("x", maxsplit=1) if "x" in size else ("24", "18")
+    src = f"https://flagcdn.com/{html.escape(size)}/{html.escape(flag_code)}.png"
+    alt = f"{country_name} flag"
+    return (
+        f'<img src="{src}" alt="{html.escape(alt)}" class="{html.escape(css_class)}" '
+        f'style="width: {html.escape(width)}px; height: {html.escape(height)}px; '
+        'border-radius: 3px; object-fit: cover; vertical-align: middle;" '
+        'onerror="this.style.display=\'none\';" />'
+    )
+
+
+def get_rank_marker(rank: int) -> str:
+    medals = {
+        1: "🥇",
+        2: "🥈",
+        3: "🥉",
+    }
+    return medals.get(rank, str(rank))
+
+
+def render_top_signal_row(row: pd.Series, rank: int, category: str) -> None:
+    country = str(row.get("country_name", "Unknown country"))
+    value = format_metric_value(category, row.get("metric_value"))
+    flag_html = get_flag_img_html(row.get("country_code"), country)
+
+    st.markdown(
+        f"""
+        <div class="top-signal-row">
+            <span class="top-signal-rank">{html.escape(get_rank_marker(rank))}</span>
+            <div class="top-signal-country">{flag_html}{html.escape(country)}</div>
+            <div class="top-signal-value">{html.escape(value)}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_top_signals_by_indicator(df: pd.DataFrame) -> None:
+    with st.container(border=True):
+        st.markdown(
+            """
+            <div class="top-signal-panel">
+                <p class="top-signal-card-title">Top 5 by indicator</p>
+                <p class="top-signal-card-subtitle">Ranks are indicator-specific and do not represent an overall relocation ranking.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        tabs = st.tabs([tab_label for _, tab_label, _, _ in TOP_SIGNAL_CONFIG])
+        for tab, (category, _, title, subtitle) in zip(tabs, TOP_SIGNAL_CONFIG):
+            with tab:
+                category_df = df.loc[
+                    df["insight_category"].eq(category) & df["metric_value"].notna()
+                ].copy()
+
+                if category_df.empty:
+                    top_rows = category_df
+                else:
+                    top_rows = category_df.sort_values(
+                        "metric_value",
+                        ascending=not is_higher_better(category),
+                    ).head(5)
+
+                st.markdown(
+                    f"""
+                    <p class="top-signal-card-title">{html.escape(title)}</p>
+                    <p class="top-signal-card-subtitle">{html.escape(subtitle)}</p>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                if top_rows.empty:
+                    st.caption("No current values available.")
+                else:
+                    for rank, (_, row) in enumerate(top_rows.iterrows(), start=1):
+                        render_top_signal_row(row, rank, category)
 
 
 def render_app_header() -> None:
@@ -1338,12 +1537,6 @@ def render_comparison_matrix(comparison_rows: list[dict], from_country: str, to_
 
 
 def render_country_profile(country_data: pd.DataFrame, selected_country: str) -> None:
-    col_left, col_right = st.columns([3, 1])
-    with col_left:
-        render_country_title(selected_country)
-    with col_right:
-        render_country_profile_export(country_data, selected_country)
-
     st.markdown("#### Key signals")
     render_pressure_signals(country_data)
 
@@ -1373,6 +1566,9 @@ def render_country_profile(country_data: pd.DataFrame, selected_country: str) ->
         st.write(interpretation_map.get(overall_pressure, "This country has a mixed pressure profile across the tracked indicators."))
 
     render_data_freshness_note(country_data)
+    export_col, _ = st.columns([1, 2.4])
+    with export_col:
+        render_country_profile_export(country_data, selected_country)
 
 
 def render_detailed_insights(country_data: pd.DataFrame) -> None:
@@ -1441,15 +1637,18 @@ def main():
         axis=1,
     )
 
-    # Country selector
     countries = sorted(df['country_name'].unique())
-    selector_col, _ = st.columns([1.1, 2.4])
+    selector_col, top_signals_col = st.columns([1, 1.65], vertical_alignment="top")
     with selector_col:
         selected_country = st.selectbox(
             "Country",
             countries,
             index=0
         )
+        selected_country_code = get_country_code_for_name(df, selected_country)
+        render_country_title(selected_country, selected_country_code)
+    with top_signals_col:
+        render_top_signals_by_indicator(df)
 
     # Filter data for selected country
     country_data = df[df['country_name'] == selected_country]
