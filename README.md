@@ -2,43 +2,52 @@
 
 Early-stage exploration tool for comparing European countries by financial and social pressure indicators using Eurostat data.
 
-**This is not a relocation recommendation engine.** It provides context for research only.
+**This is not a relocation recommendation engine.** It provides structured context for research only.
 
-## What this MVP does
+## What This MVP Does
 
-Compares 28 European countries across four key indicators:
+Compares 28 European countries across four current indicators:
 
-1. **Inflation Pressure** — Annual inflation rate from HICP (Harmonized Index of Consumer Prices)
-2. **Housing Burden** — Housing overburden rate (% of population spending >40% of income on housing)
-3. **Poverty Risk** — At-risk-of-poverty rate (% of population with income <60% of median)
-4. **Income Capacity** — Median equivalised net income in PPS from Eurostat ilc_di03
+1. **Inflation pressure** - annual inflation rate from Eurostat HICP
+2. **Housing pressure** - housing overburden rate, or the share of people spending more than 40% of income on housing
+3. **Poverty pressure** - at-risk-of-poverty rate, or the share of people below 60% of national median income
+4. **Income capacity** - median equivalised net income in PPS from Eurostat `ilc_di03`
 
-The first three indicators are pressure metrics where lower values are generally better. Income capacity is different: higher values mean stronger income capacity and it is not a pressure metric.
+The three pressure indicators are lower-is-better. `income_capacity` is higher-is-better, uses PPS, and is not a pressure indicator.
 
-For each indicator, the viewer shows:
-- Individual country indicator assessments (Low, Moderate, High, Very High)
-- Relative ranking within each indicator
-- Overall pressure snapshot (pattern-based assessment across the tracked indicators)
-- Two-country comparison with trade-off analysis
-- Plain-language summaries
+## Current App Features
+
+- Modernized Streamlit UI with a compact, readable layout
+- Country selector with selected-country profile display and real flag images
+- Key signals, key risk driver, income capacity, and detailed indicator cards
+- Compact **Top 5 by indicator** section with real flag images and medals for the top 3
+- Current-value country comparison, redesigned to use less vertical space
+- Historical trends with time ranges:
+  - Last 10 years
+  - Last 20 years
+  - Full available history
+- Historical outlier context notes
+- Cross-country historical trend comparison
+- Searchable indicator glossary
+- Methodology notes, MVP disclaimer, and CSV export for the selected country profile
+
+Historical charts are factual/contextual only. The app does not use forecast, prediction, or strong trend-interpretation language.
 
 ## App Preview
 
 ### Country Profile
 ![Country Profile](docs/screenshots/country_profile.png)
-*Individual country assessment showing pressure indicators, income capacity, and next steps.*
+*Individual country assessment showing pressure indicators and income capacity.*
 
 ### Country Comparison
 ![Country Comparison](docs/screenshots/country_comparison.png)
-*Side-by-side comparison of two countries with trade-off analysis.*
+*Compact side-by-side comparison of two countries across the current MVP indicators.*
 
 ### Methodology Notes
 ![Methodology Notes](docs/screenshots/methodology_notes.png)
 *Data sources and methodology details for transparency.*
 
 ## Quick Start
-
-### Setup
 
 Create and activate the virtual environment:
 
@@ -48,14 +57,14 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### Run Commands
+Generate data:
 
-**Generate data (master pipeline):**
 ```powershell
 python data_pipeline/run_mvp_pipeline.py
 ```
 
-**View results in browser:**
+Run the app:
+
 ```powershell
 streamlit run frontend/streamlit_app.py
 ```
@@ -64,52 +73,36 @@ streamlit run frontend/streamlit_app.py
 
 Austria, Belgium, Bulgaria, Croatia, Cyprus, Czechia, Denmark, Estonia, Finland, France, Germany, Greece, Hungary, Ireland, Italy, Latvia, Lithuania, Luxembourg, Malta, Netherlands, Norway, Poland, Portugal, Romania, Slovakia, Slovenia, Spain, Sweden.
 
-**Important Eurostat codes:**
-- Greece uses code `EL` (not `GR`)
-- Norway code `"NO"` must be quoted in YAML configuration (unquoted `NO` parses as Boolean)
+Important Eurostat codes:
+
+- Greece uses code `EL`, not `GR`.
+- Norway code `"NO"` must be quoted in YAML configuration because unquoted `NO` can parse as Boolean.
 
 ## Data Outputs
 
-**Raw/intermediate files:**
-- `hicp_index_mvp_countries.csv` — HICP index values
-- `hicp_annual_inflation_mvp_countries.csv` — Calculated annual inflation rates
-- `housing_overburden_mvp_countries.csv` — Housing pressure data
-- `poverty_risk_mvp_countries.csv` — Poverty risk data
-- `income_capacity_mvp_countries.csv` — Median equivalised net income in PPS
+Key clean outputs in `data/clean/` include:
 
-**Insight files:**
-- `inflation_pressure_insights.csv` — Pressure assessment for inflation indicator
-- `housing_pressure_insights.csv` — Pressure assessment for housing indicator
-- `poverty_pressure_insights.csv` — Pressure assessment for poverty indicator
-- `income_capacity_insights.csv` — Income capacity insight cards
-- `all_mvp_insights.csv` — Combined standardized format (input to Streamlit viewer)
+- `hicp_annual_inflation_mvp_countries.csv`
+- `housing_overburden_mvp_countries.csv`
+- `poverty_risk_mvp_countries.csv`
+- `income_capacity_mvp_countries.csv`
+- `all_mvp_insights.csv` - powers current insights and profile cards
+- `all_mvp_timeseries.csv` - powers historical trend charts
 
-All files saved to `data/clean/`
+## What Is Not Included
 
-## What's NOT Included
-
-This MVP does **not** include:
-- Salary levels, wage growth, or job markets
-- Taxes or social benefits
-- Career opportunities or industry presence
-- Language, culture, or lifestyle fit
-- Healthcare systems or quality
-- Regional or city-level data
-- Personal preferences or circumstances
-- Cost of living factors beyond housing
-- Immigration policies or residency requirements
-
-These factors are important for relocation decisions but require separate research.
+This MVP does not include salary levels, taxes, job markets, healthcare, language, culture, lifestyle fit, city-level data, personal preferences, immigration policies, or a final relocation recommendation engine.
 
 ## Technical Stack
 
 - Python 3.x
 - Eurostat REST API
-- pandas for data processing
-- Streamlit for frontend
-- PyYAML for configuration
+- pandas
+- Streamlit
+- PyYAML
+- CSV outputs
 
 ## For Developers
 
-See `docs/pipeline_workflow.md` for technical pipeline details.
-See `docs/project_handoff.md` for complete project reference.
+See `docs/pipeline_workflow.md` for technical pipeline details.  
+See `docs/project_handoff.md` for current project handoff notes.
