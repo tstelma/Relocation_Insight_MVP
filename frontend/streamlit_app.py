@@ -11,8 +11,34 @@ st.set_page_config(
 )
 
 # Data loading
-DATA_PATH = Path("data") / "clean" / "all_mvp_insights.csv"
-TIMESERIES_DATA_PATH = Path("data") / "clean" / "all_mvp_timeseries.csv"
+APP_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = APP_DIR.parent
+DATA_PATH = PROJECT_ROOT / "data" / "clean" / "all_mvp_insights.csv"
+TIMESERIES_DATA_PATH = PROJECT_ROOT / "data" / "clean" / "all_mvp_timeseries.csv"
+REQUIRED_DATA_PATHS = (DATA_PATH, TIMESERIES_DATA_PATH)
+
+INSIGHTS_REQUIRED_COLUMNS = {
+    "insight_category",
+    "country_code",
+    "country_name",
+    "time_period",
+    "metric_value",
+    "pressure_label",
+    "main_message",
+    "why_it_matters",
+    "confidence_level",
+    "source",
+}
+TIMESERIES_REQUIRED_COLUMNS = {
+    "country_code",
+    "country_name",
+    "indicator",
+    "time_period",
+    "metric_value",
+    "unit",
+    "better_direction",
+    "source",
+}
 
 INDICATOR_LABELS = {
     "inflation_pressure": "Inflation pressure",
@@ -80,12 +106,34 @@ def load_insights(path: str, modified_ns: int | None):
 
 @st.cache_data
 def load_timeseries(path: str, modified_ns: int | None):
-    if modified_ns is None:
-        return pd.DataFrame()
+    return pd.read_csv(path)
+
+
+def format_repo_path(path: Path) -> str:
     try:
-        return pd.read_csv(path)
-    except (pd.errors.EmptyDataError, pd.errors.ParserError, OSError):
-        return pd.DataFrame()
+        return path.relative_to(PROJECT_ROOT).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def show_data_file_error(missing_paths: list[Path]) -> None:
+    st.error("Required CSV data files are missing.")
+    st.markdown("\n".join(f"- `{format_repo_path(path)}`" for path in missing_paths))
+    st.info(
+        "Run `python data_pipeline/run_mvp_pipeline.py` locally, then commit the generated "
+        "`data/clean/` CSV files before deploying."
+    )
+
+
+def validate_required_columns(df: pd.DataFrame, required_columns: set[str], file_path: Path) -> bool:
+    missing_columns = sorted(required_columns - set(df.columns))
+    if not missing_columns:
+        return True
+
+    st.error(f"`{format_repo_path(file_path)}` has an unexpected schema.")
+    st.markdown("Missing columns: " + ", ".join(f"`{column}`" for column in missing_columns))
+    st.info("Regenerate the data with `python data_pipeline/run_mvp_pipeline.py` before deploying.")
+    return False
 
 
 def apply_visual_style() -> None:
@@ -317,21 +365,34 @@ def apply_visual_style() -> None:
             line-height: 1.35;
             margin-top: 0.35rem;
         }
+        .country-profile-card {
+            margin-top: 0.55rem;
+            padding: 0.9rem 1rem 0.85rem;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background:
+                linear-gradient(135deg, rgba(139, 156, 255, 0.11), transparent 46%),
+                rgba(17, 26, 44, 0.82);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.04),
+                0 14px 36px rgba(0, 0, 0, 0.18);
+        }
         .country-eyebrow {
             color: var(--text-faint);
-            font-size: 0.76rem;
+            font-size: 0.74rem;
             font-weight: 720;
             letter-spacing: 0.05em;
-            margin: 0 0 0.1rem;
+            margin: 0 0 0.28rem;
             text-transform: uppercase;
         }
         .country-title {
             color: var(--text-main);
-            font-size: 2.38rem;
+            font-size: 3.05rem;
             font-weight: 820;
             letter-spacing: 0;
-            line-height: 1.08;
-            margin: 0.18rem 0 0.35rem;
+            line-height: 1.02;
+            margin: 0;
+            overflow-wrap: anywhere;
         }
         .country-title-flag,
         .top-signal-flag {
@@ -342,7 +403,8 @@ def apply_visual_style() -> None:
             box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.24);
         }
         .country-title-flag {
-            margin-right: 0.48rem;
+            margin-right: 0.58rem;
+            transform: translateY(-0.08rem);
         }
         .top-signal-flag {
             margin-right: 0.34rem;
@@ -476,6 +538,9 @@ def apply_visual_style() -> None:
         @media (max-width: 760px) {
             .app-title {
                 font-size: 1.72rem;
+            }
+            .country-title {
+                font-size: 2.35rem;
             }
             .comparison-row {
                 grid-template-columns: 1fr;
@@ -676,8 +741,10 @@ def render_country_title(selected_country: str, country_code: str | None = None)
     flag_html = get_flag_img_html(country_code, selected_country, css_class="country-title-flag") if country_code else ""
     st.markdown(
         f"""
-        <p class="country-eyebrow">Country profile</p>
-        <h2 class="country-title">{flag_html}{html.escape(selected_country)}</h2>
+        <section class="country-profile-card">
+            <p class="country-eyebrow">Country profile</p>
+            <h2 class="country-title">{flag_html}{html.escape(selected_country)}</h2>
+        </section>
         """,
         unsafe_allow_html=True,
     )
@@ -1784,14 +1851,24 @@ def main():
     render_app_header()
 
     # Load data
-    try:
-        df = load_insights(str(DATA_PATH), get_file_modified_ns(DATA_PATH))
-    except FileNotFoundError:
-        st.error(f"Data file not found: {DATA_PATH}")
-        st.info("Please run the MVP pipeline first: `python data_pipeline/run_mvp_pipeline.py`")
+    missing_data_paths = [path for path in REQUIRED_DATA_PATHS if not path.exists()]
+    if missing_data_paths:
+        show_data_file_error(missing_data_paths)
         return
 
-    timeseries_df = load_timeseries(str(TIMESERIES_DATA_PATH), get_file_modified_ns(TIMESERIES_DATA_PATH))
+    try:
+        df = load_insights(str(DATA_PATH), get_file_modified_ns(DATA_PATH))
+        timeseries_df = load_timeseries(str(TIMESERIES_DATA_PATH), get_file_modified_ns(TIMESERIES_DATA_PATH))
+    except (pd.errors.EmptyDataError, pd.errors.ParserError, OSError) as error:
+        st.error("Required CSV data files could not be loaded.")
+        st.caption(str(error))
+        st.info("Regenerate the data with `python data_pipeline/run_mvp_pipeline.py` before deploying.")
+        return
+
+    if not validate_required_columns(df, INSIGHTS_REQUIRED_COLUMNS, DATA_PATH):
+        return
+    if not validate_required_columns(timeseries_df, TIMESERIES_REQUIRED_COLUMNS, TIMESERIES_DATA_PATH):
+        return
 
     # Calculate relative ranking across all countries by category
     def rank_group(group: pd.DataFrame) -> pd.Series:
