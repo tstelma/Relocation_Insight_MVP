@@ -471,6 +471,37 @@ TOP_SIGNAL_CONFIG = [
     ("income_capacity", "Income", "Strongest income capacity", "Higher PPS income capacity ranks first."),
 ]
 
+INDICATOR_GLOSSARY = [
+    {
+        "name": "Inflation pressure",
+        "definition": "Annual price growth based on Eurostat HICP.",
+        "rule": "Lower inflation usually means less price pressure.",
+        "unit": "%",
+        "source": "Eurostat HICP",
+    },
+    {
+        "name": "Housing pressure",
+        "definition": "Share of people spending more than 40% of income on housing.",
+        "rule": "Lower housing overburden usually means lower housing stress.",
+        "unit": "%",
+        "source": "Eurostat SILC",
+    },
+    {
+        "name": "Poverty pressure",
+        "definition": "Share of people below 60% of national median income.",
+        "rule": "Lower poverty risk usually means lower social pressure.",
+        "unit": "%",
+        "source": "Eurostat SILC",
+    },
+    {
+        "name": "Income capacity",
+        "definition": "Median equivalised net income adjusted for purchasing power.",
+        "rule": "Higher PPS income means stronger local purchasing power.",
+        "unit": "PPS",
+        "source": "Eurostat ilc_di03",
+    },
+]
+
 
 def to_ordinal(value: int) -> str:
     if 10 <= value % 100 <= 20:
@@ -1074,6 +1105,36 @@ def render_methodology_notes() -> None:
             "Pressure labels are simplified MVP categories for early-stage signals only, "
             "not detailed economic diagnostics. Country comparisons are signals, not full relocation recommendations."
         )
+
+
+def render_indicator_glossary() -> None:
+    with st.expander("Indicator glossary", expanded=False):
+        search_term = st.text_input(
+            "Search indicators",
+            placeholder="Try income, housing, poverty...",
+            key="indicator_glossary_search",
+        ).strip().lower()
+
+        if search_term:
+            glossary_rows = [
+                item for item in INDICATOR_GLOSSARY
+                if search_term in " ".join(str(value).lower() for value in item.values())
+            ]
+        else:
+            glossary_rows = INDICATOR_GLOSSARY
+
+        if not glossary_rows:
+            st.caption("No matching indicators.")
+            return
+
+        for idx, item in enumerate(glossary_rows):
+            if idx > 0:
+                st.divider()
+
+            st.markdown(f"**{item['name']}**")
+            st.caption(f"Unit: {item['unit']} | Source: {item['source']}")
+            st.write(item["definition"])
+            render_metadata(item["rule"])
 
 
 def render_trend_summary_stats(chart_df: pd.DataFrame, indicator: str) -> None:
@@ -1792,6 +1853,7 @@ def main():
         "Kept collapsed so methodology does not dominate the main workflow.",
         "Reference",
     )
+    render_indicator_glossary()
     render_methodology_notes()
     with st.expander("MVP limitations", expanded=False):
         st.write(
