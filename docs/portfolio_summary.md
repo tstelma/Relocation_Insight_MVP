@@ -100,3 +100,4 @@ Key frontend datasets:
 - PyYAML
 - CSV-based data outputs
 - Git / GitHub
+- ChatGPT / Codex
