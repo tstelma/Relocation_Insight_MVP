@@ -20,6 +20,7 @@ INDICATOR_LABELS = {
     "poverty_pressure": "Poverty pressure",
     "income_capacity": "Income capacity",
     "net_earnings_capacity": "Net earnings capacity",
+    "employment_strength": "Employment strength",
 }
 
 PRESSURE_CATEGORIES = {
@@ -32,6 +33,12 @@ CAPACITY_CATEGORIES = {
     "income_capacity",
     "net_earnings_capacity",
 }
+
+STRENGTH_CATEGORIES = {
+    "employment_strength",
+}
+
+HIGHER_IS_BETTER_CATEGORIES = CAPACITY_CATEGORIES | STRENGTH_CATEGORIES
 
 METRIC_EXPLANATIONS = {
     "inflation_pressure": {
@@ -53,6 +60,10 @@ METRIC_EXPLANATIONS = {
     "net_earnings_capacity": {
         "definition": "Annual net earnings for a single person without children earning 100% of average earnings.",
         "rule": "Higher PPS net earnings = stronger working-person earnings capacity.",
+    },
+    "employment_strength": {
+        "definition": "Working-age employment rate for people aged 20-64.",
+        "rule": "Higher employment rate = stronger labour-market participation signal.",
     },
 }
 
@@ -492,6 +503,7 @@ TOP_SIGNAL_CONFIG = [
     ("poverty_pressure", "Poverty", "Lowest poverty pressure", "Lower poverty risk ranks first."),
     ("income_capacity", "Income", "Strongest income capacity", "Higher PPS income capacity ranks first."),
     ("net_earnings_capacity", "Net earnings", "Strongest net earnings capacity", "Higher PPS net earnings rank first."),
+    ("employment_strength", "Employment", "Strongest employment signal", "Higher working-age employment rate ranks first."),
 ]
 
 INDICATOR_GLOSSARY = [
@@ -530,6 +542,13 @@ INDICATOR_GLOSSARY = [
         "unit": "PPS",
         "source": "Eurostat earn_nt_net",
     },
+    {
+        "name": "Employment strength",
+        "definition": "Working-age employment rate for people aged 20-64.",
+        "rule": "Higher employment rate suggests a stronger labour-market participation signal.",
+        "unit": "%",
+        "source": "Eurostat lfsi_emp_a",
+    },
 ]
 
 
@@ -560,6 +579,12 @@ def build_rank_message(category: str, rank: int, total: int) -> str:
         if rank == total:
             return "Lowest net earnings capacity among selected countries"
         return f"{to_ordinal(rank)} highest net earnings capacity out of {total} selected countries"
+    if category == "employment_strength":
+        if rank == 1:
+            return "Highest employment strength among selected countries"
+        if rank == total:
+            return "Lowest employment strength among selected countries"
+        return f"{to_ordinal(rank)} highest employment strength out of {total} selected countries"
 
     if rank == 1:
         return "Lowest pressure among selected countries"
@@ -576,6 +601,7 @@ def get_metric_label(category: str) -> str:
         "poverty_pressure": "At-risk-of-poverty rate",
         "income_capacity": "Income capacity",
         "net_earnings_capacity": "Net earnings capacity",
+        "employment_strength": "Employment strength",
     }
     return labels.get(category, category.replace("_", " ").title())
 
@@ -622,6 +648,8 @@ def make_signal_sentence(row: pd.Series, max_length: int = 92) -> str:
     label = row.get("pressure_label", "signal")
     if category in CAPACITY_CATEGORIES:
         return f"Capacity signal is {label}."
+    if category in STRENGTH_CATEGORIES:
+        return f"Labour-market signal is {label}."
     return f"Pressure signal is {label}."
 
 
@@ -928,7 +956,7 @@ def format_period_for_display(value) -> str:
 
 
 def is_higher_better(category: str) -> bool:
-    return category in CAPACITY_CATEGORIES
+    return category in HIGHER_IS_BETTER_CATEGORIES
 
 
 def get_overall_pressure(country_data: pd.DataFrame) -> str:
@@ -1046,6 +1074,25 @@ def render_income_and_earnings_capacity(country_data: pd.DataFrame) -> None:
         )
 
 
+def render_employment_strength_signal(country_data: pd.DataFrame) -> None:
+    row = country_data.loc[country_data["insight_category"] == "employment_strength"]
+    if row.empty:
+        st.caption("Data unavailable")
+        return
+
+    row = row.iloc[0]
+    metric_val = format_metric_value("employment_strength", row["metric_value"])
+    level = row["pressure_label"]
+
+    st.metric("Employment strength", metric_val)
+    render_status_label(f"{level} signal")
+    render_signal_sentence(make_signal_sentence(row))
+    render_indicator_context(
+        "employment_strength",
+        "Higher values indicate a stronger working-age employment signal.",
+    )
+
+
 def render_research_checklist(country_data: pd.DataFrame) -> None:
     best = get_key_risk_driver(country_data)
 
@@ -1156,6 +1203,10 @@ def render_methodology_notes() -> None:
             "Income capacity uses median equivalised net income from Eurostat ilc_di03, expressed in PPS. "
             "Net earnings capacity uses annual net earnings from Eurostat earn_nt_net for a single person without children "
             "earning 100% of average earnings, expressed in PPS. Higher capacity values are better, unlike the cost pressure indicators."
+        )
+        st.write(
+            "Employment strength uses the working-age employment rate from Eurostat lfsi_emp_a. "
+            "It is a higher-is-better labour-market strength signal, not a cost pressure or income indicator."
         )
         st.write(
             "Pressure labels are simplified MVP categories for early-stage signals only, "
@@ -1668,6 +1719,10 @@ def render_country_profile(country_data: pd.DataFrame, selected_country: str) ->
             st.markdown("#### Income & earnings")
             render_income_and_earnings_capacity(country_data)
 
+    with st.container(border=True):
+        st.markdown("#### Labour market")
+        render_employment_strength_signal(country_data)
+
     overall_pressure = get_overall_pressure(country_data)
     interpretation_map = {
         "Generally low pressure": "All tracked indicators are low, suggesting a stable financial profile.",
@@ -1822,6 +1877,8 @@ def main():
     to_income_capacity = get_metric(to_country, "income_capacity")
     from_net_earnings_capacity = get_metric(from_country, "net_earnings_capacity")
     to_net_earnings_capacity = get_metric(to_country, "net_earnings_capacity")
+    from_employment_strength = get_metric(from_country, "employment_strength")
+    to_employment_strength = get_metric(to_country, "employment_strength")
 
     comparison_rows = []
     for metric_label, category, from_value, to_value in [
@@ -1830,6 +1887,7 @@ def main():
         ("At-risk-of-poverty rate", "poverty_pressure", from_poverty, to_poverty),
         ("Income capacity", "income_capacity", from_income_capacity, to_income_capacity),
         ("Net earnings capacity", "net_earnings_capacity", from_net_earnings_capacity, to_net_earnings_capacity),
+        ("Employment strength", "employment_strength", from_employment_strength, to_employment_strength),
     ]:
         if from_value is None or to_value is None:
             difference = None
@@ -1856,7 +1914,7 @@ def main():
 
     comparison_df = pd.DataFrame(comparison_rows)
     render_comparison_matrix(comparison_rows, from_country, to_country)
-    render_metadata("Lower pressure is better; higher income and net earnings capacity are better.")
+    render_metadata("Lower pressure is better; higher income, net earnings, and employment strength are better.")
 
     with st.expander("Comparison table", expanded=False):
         st.dataframe(
@@ -1872,6 +1930,7 @@ def main():
     poverty_better = comparison_rows[2]["Better country"]
     income_better = comparison_rows[3]["Better country"]
     net_earnings_better = comparison_rows[4]["Better country"]
+    employment_better = comparison_rows[5]["Better country"]
     inflation_diff = None if from_inflation is None or to_inflation is None else abs(to_inflation - from_inflation)
     housing_diff = None if from_housing is None or to_housing is None else abs(to_housing - from_housing)
     poverty_diff = None if from_poverty is None or to_poverty is None else abs(to_poverty - from_poverty)
@@ -1881,15 +1940,20 @@ def main():
         if from_net_earnings_capacity is None or to_net_earnings_capacity is None
         else abs(to_net_earnings_capacity - from_net_earnings_capacity)
     )
+    employment_diff = (
+        None
+        if from_employment_strength is None or to_employment_strength is None
+        else abs(to_employment_strength - from_employment_strength)
+    )
 
     if (
         inflation_diff is not None and housing_diff is not None and poverty_diff is not None and
-        income_diff is not None and net_earnings_diff is not None and
+        income_diff is not None and net_earnings_diff is not None and employment_diff is not None and
         inflation_diff < 0.5 and housing_diff < 0.5 and poverty_diff < 0.5 and
-        income_diff < 500 and net_earnings_diff < 500
+        income_diff < 500 and net_earnings_diff < 500 and employment_diff < 0.5
     ):
         tradeoff_label = "No major difference"
-    elif (inflation_better == housing_better == poverty_better == income_better == net_earnings_better and
+    elif (inflation_better == housing_better == poverty_better == income_better == net_earnings_better == employment_better and
           inflation_better not in ["Equal", "Data unavailable"]):
         tradeoff_label = f"Clear advantage for {inflation_better}"
     else:
@@ -1897,9 +1961,9 @@ def main():
 
     render_status_label(tradeoff_label)
 
-    if (inflation_better == housing_better == poverty_better == income_better == net_earnings_better and
+    if (inflation_better == housing_better == poverty_better == income_better == net_earnings_better == employment_better and
         inflation_better not in ["Equal", "Data unavailable"]):
-        summary_text = f"{inflation_better} shows better pressure and capacity signals across the tracked indicators."
+        summary_text = f"{inflation_better} shows better pressure, capacity, and employment signals across the tracked indicators."
     else:
         summary_text = "This comparison shows a mixed trade-off across the tracked indicators."
 
@@ -1923,7 +1987,7 @@ def main():
     with st.expander("MVP limitations", expanded=False):
         st.write(
             "This MVP currently compares inflation pressure, housing burden, poverty risk, income capacity, "
-            "and net earnings capacity. "
+            "net earnings capacity, and employment strength. "
             "It does not yet include salary levels, taxes, career opportunities, language, culture, lifestyle preferences, healthcare, "
             "or personal circumstances."
         )
