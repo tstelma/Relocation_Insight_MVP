@@ -23,6 +23,7 @@ Primary source: **Eurostat**
 - HICP data for annual inflation pressure.
 - SILC data for housing overburden and poverty risk.
 - `ilc_di03` for median equivalised net income in PPS.
+- `earn_nt_net` for annual net earnings in PPS for a single person without children earning 100% of average earnings.
 
 Key frontend datasets:
 
@@ -37,8 +38,9 @@ Key frontend datasets:
 | `housing_pressure` | Share of people spending more than 40% of income on housing | % | Lower is better |
 | `poverty_pressure` | Share of people below 60% of national median income | % | Lower is better |
 | `income_capacity` | Median equivalised net income from Eurostat `ilc_di03` | PPS | Higher is better |
+| `net_earnings_capacity` | Annual net earnings from Eurostat `earn_nt_net` for a single person without children earning 100% of average earnings | PPS | Higher is better |
 
-`income_capacity` is not a pressure indicator. It provides purchasing-power-adjusted income context alongside the three lower-is-better pressure indicators.
+`income_capacity` and `net_earnings_capacity` are not pressure indicators. They provide income and working-person earnings context alongside the three lower-is-better pressure indicators.
 
 ## 6. Technical Workflow
 
@@ -54,11 +56,11 @@ Key frontend datasets:
 - Country Profile with selected country display and real country flag image.
 - Key Signals across the three pressure indicators.
 - Key Risk Driver based only on pressure indicators.
-- Income capacity section with PPS formatting.
+- Income and earnings capacity section with PPS formatting.
 - Top 5 by Indicator with indicator-specific ranks, medals, and flags.
-- Compact Country Comparison for current values.
-- Historical Trends with time-range controls.
-- Cross-country Historical Trend Comparison.
+- Compact Country Comparison for current values, including net earnings capacity.
+- Historical Trends with time-range controls, including net earnings capacity.
+- Cross-country Historical Trend Comparison, including net earnings capacity.
 - Searchable Indicator Glossary.
 - Methodology notes and MVP disclaimer.
 - CSV export for the selected country profile.
@@ -66,7 +68,7 @@ Key frontend datasets:
 ## 8. Key Analytical Decisions
 
 - Pressure indicators are treated as lower-is-better.
-- `income_capacity` is treated as higher-is-better and displayed in PPS.
+- `income_capacity` and `net_earnings_capacity` are treated as higher-is-better and displayed in PPS.
 - Current insights and historical charts are separated into dedicated CSV outputs.
 - Historical charts are factual/contextual only, with no forecast or prediction language.
 - Missing historical data is not interpolated.
@@ -77,7 +79,8 @@ Key frontend datasets:
 ## 9. Limitations
 
 - Country-level only; no city or regional analysis yet.
-- Does not include salaries, taxes, benefits, employment, healthcare, language, culture, lifestyle, immigration, or personal preferences.
+- Does not include full salary modeling, detailed tax/benefit simulation, employment, healthcare, language, culture, lifestyle, immigration, or personal preferences.
+- `net_earnings_capacity` is scenario-based and represents one selected worker profile, not all households or professions.
 - Does not provide a final relocation recommendation.
 - Indicator labels are simplified MVP signals, not full economic diagnostics.
 - Historical charts provide context, not trend forecasts.
@@ -87,7 +90,6 @@ Key frontend datasets:
 - Polish Top 5 and Indicator Focus workflows.
 - Improve cross-country historical trend comparison.
 - Prepare a public-facing case study or LinkedIn project post.
-- Add `net_earnings_capacity` using Eurostat `earn_nt_net`.
 - Add employment or job-market indicators.
 - Consider transparent composite scoring later, if methodology remains explainable.
 

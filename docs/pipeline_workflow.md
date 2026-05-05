@@ -1,9 +1,16 @@
-﻿
 # Data Pipeline Workflow
 
 ## Overview
 
-The MVP pipeline has five sequential stages that fetch Eurostat data, generate insights, combine them into a unified format, and feed the result to the Streamlit viewer.
+The MVP pipeline fetches Eurostat data, generates indicator-specific insight cards, exports standardized historical time series, and feeds the Streamlit app.
+
+The current MVP has five indicators:
+
+1. `inflation_pressure`
+2. `housing_pressure`
+3. `poverty_pressure`
+4. `income_capacity`
+5. `net_earnings_capacity`
 
 ## Pipeline Stages
 
@@ -11,165 +18,202 @@ The MVP pipeline has five sequential stages that fetch Eurostat data, generate i
 
 **Script:** `data_pipeline/run_hicp_pipeline.py`
 
-**What it does:**
-1. Fetches annual HICP (Harmonized Index of Consumer Prices) index values from Eurostat
-2. Calculates year-over-year annual inflation rates
-3. Classifies each country's inflation as Low/Moderate/High/Very High
-4. Generates inflation pressure insight cards
+What it does:
 
-**Outputs:**
-- `data/clean/hicp_index_mvp_countries.csv` — Raw HICP index values
-- `data/clean/hicp_annual_inflation_mvp_countries.csv` — Calculated inflation rates
-- `data/clean/inflation_pressure_insights.csv` — Inflation insight cards (country, pressure_label, title, main_message, etc.)
+1. Fetches HICP index values from Eurostat.
+2. Calculates annual inflation rates.
+3. Classifies inflation pressure.
+4. Generates inflation pressure insight cards.
+
+Outputs:
+
+- `data/clean/hicp_index_mvp_countries.csv`
+- `data/clean/hicp_annual_inflation_mvp_countries.csv`
+- `data/clean/inflation_pressure_insights.csv`
 
 ### Stage 2: Housing Overburden Export
 
 **Script:** `data_pipeline/run_indicator_export.py housing_overburden`
 
-**What it does:**
-1. Exports housing overburden data from Eurostat SILC
-2. Housing overburden = % of population spending >40% of income on housing
-3. Classifies each country's housing pressure
-4. Automatically generates housing pressure insight cards
+What it does:
 
-**Outputs:**
-- `data/clean/housing_overburden_mvp_countries.csv` — Raw housing data
-- `data/clean/housing_pressure_insights.csv` — Housing insight cards
+1. Exports housing overburden data from Eurostat SILC.
+2. Uses the share of people spending more than 40% of income on housing.
+3. Classifies housing pressure.
+4. Generates housing pressure insight cards.
+
+Outputs:
+
+- `data/clean/housing_overburden_mvp_countries.csv`
+- `data/clean/housing_pressure_insights.csv`
 
 ### Stage 3: Poverty Risk Export
 
 **Script:** `data_pipeline/run_indicator_export.py poverty_risk`
 
-**What it does:**
-1. Exports poverty risk data from Eurostat SILC
-2. Poverty risk = % of population with income <60% of median
-3. Classifies each country's poverty pressure
-4. Automatically generates poverty pressure insight cards
+What it does:
 
-**Outputs:**
-- `data/clean/poverty_risk_mvp_countries.csv` — Raw poverty risk data
-- `data/clean/poverty_pressure_insights.csv` — Poverty insight cards
+1. Exports poverty risk data from Eurostat SILC.
+2. Uses the share of people below 60% of national median income.
+3. Classifies poverty pressure.
+4. Generates poverty pressure insight cards.
+
+Outputs:
+
+- `data/clean/poverty_risk_mvp_countries.csv`
+- `data/clean/poverty_pressure_insights.csv`
 
 ### Stage 4: Income Capacity Export
 
 **Script:** `data_pipeline/run_indicator_export.py income_capacity`
 
-**Indicator:** Income Capacity (the fourth MVP indicator)
+Source: Eurostat `ilc_di03`  
+Metric: median equivalised net income  
+Unit: PPS  
+Direction: higher is better
 
-**Data Source:** Eurostat ilc_di03 dataset
+Outputs:
 
-**Metric:** Median equivalised net income in Purchasing Power Standard (PPS)
+- `data/clean/income_capacity_mvp_countries.csv`
+- `data/clean/income_capacity_insights.csv`
 
-**Interpretation:** Higher values indicate stronger income capacity. Unlike inflation_pressure, housing_pressure, and poverty_pressure, income_capacity is a supporting signal rather than a pressure metric.
+### Stage 5: Net Earnings Capacity Export
 
-**What it does:**
-1. Exports median equivalised net income data from Eurostat ilc_di03
-2. Applies Purchasing Power Standard (PPS) to enable income comparisons across countries with different price levels
-3. Classifies each country's income capacity as a balancing signal for the pressure metrics
-4. Generates income capacity insight cards
+**Script:** `data_pipeline/run_indicator_export.py net_earnings_capacity`
 
-**Outputs:**
-- `data/clean/income_capacity_mvp_countries.csv` — Raw income capacity data in PPS
-- `data/clean/income_capacity_insights.csv` — Income capacity insight cards
-- `data/clean/all_mvp_insights.csv` — Included in combined output
+Source: Eurostat `earn_nt_net`  
+Metric: annual net earnings  
+Scenario: single person, no children, earning 100% of average earnings  
+Unit: PPS  
+Direction: higher is better
 
-### Stage 5: Combined Insights Export
+This is a working-person earnings signal. It complements `income_capacity` and is not a pressure indicator.
+
+Outputs:
+
+- `data/clean/net_earnings_capacity_mvp_countries.csv`
+- `data/clean/net_earnings_capacity_insights.csv`
+
+### Stage 6: Historical Time-Series Export
+
+**Script:** `data_pipeline/transform/export_timeseries.py`
+
+What it does:
+
+1. Reads clean indicator exports.
+2. Standardizes them into one historical format.
+3. Adds unit, source, and better-direction metadata.
+
+Output:
+
+- `data/clean/all_mvp_timeseries.csv`
+
+For `net_earnings_capacity`, the standardized rows use:
+
+- `indicator = net_earnings_capacity`
+- `unit = PPS`
+- `better_direction = higher_is_better`
+- `source = Eurostat earn_nt_net`
+
+### Stage 7: Combined Insights Export
 
 **Script:** `data_pipeline/insights/combine_insights.py`
 
-**What it does:**
-1. Reads all four insight card files
-2. Standardizes them into a unified format
-3. Adds `insight_category` field (inflation_pressure, housing_pressure, poverty_pressure, income_capacity)
-4. Renames metric columns to uniform `metric_value`
-5. Ensures all rows have the same column structure
+What it does:
 
-**Output:**
-- `data/clean/all_mvp_insights.csv` — Unified input for Streamlit viewer
+1. Reads all five insight card files.
+2. Standardizes them into a unified schema.
+3. Adds `insight_category`.
+4. Renames metric columns to `metric_value`.
 
-**Unified Column Structure:**
+Output:
+
+- `data/clean/all_mvp_insights.csv`
+
+Unified column structure:
+
+```text
+insight_category
+country_code
+country_name
+time_period
+metric_value
+pressure_label
+title
+main_message
+why_it_matters
+confidence_level
+source
 ```
-insight_category       (inflation_pressure | housing_pressure | poverty_pressure | income_capacity)
-country_code           (AT, BE, BG, etc.)
-country_name           (Austria, Belgium, Bulgaria, etc.)
-time_period            (Year or date range)
-metric_value           (Normalized percentage value or PPS for income capacity)
-pressure_label         (Low | Moderate | High | Very High)
-title                  (Human-readable insight title)
-main_message           (Key finding summary)
-why_it_matters         (Context and implications)
-confidence_level       (High | Medium | Low)
-source                 (Eurostat HICP / Eurostat SILC / Eurostat ilc_di03)
-```
+
+`all_mvp_insights.csv` preserves the same schema while adding `insight_category = net_earnings_capacity`.
 
 ## Running the Pipeline
 
-**Execute all five stages:**
+Run the full MVP pipeline:
+
 ```powershell
 python data_pipeline/run_mvp_pipeline.py
 ```
 
-The master pipeline script (`run_mvp_pipeline.py`) runs each stage sequentially, printing progress and status for each stage.
+Run the new indicator stage only:
+
+```powershell
+python data_pipeline/run_indicator_export.py net_earnings_capacity
+```
 
 ## Streamlit Viewer
 
-**Input File:** `data/clean/all_mvp_insights.csv` (output from Stage 5)
+Inputs:
 
-**Viewer Features:**
-- **Country selector** — Dropdown to choose any of 28 countries
-- **Country pressure summary** — Overview with metric values and overall snapshot
-- **Individual insight cards** — One card per indicator showing title, message, ranking, and source
-- **Relative ranking** — Shows where each country ranks within each indicator
-- **Overall pressure snapshot** — Pattern-based assessment: "Generally low pressure", "Broad pressure risk", "Uneven pressure profile", etc.
-- **Income capacity signal** — Displays median equivalised net income in PPS and balances the pressure-side view
-- **Two-country comparison** — Select two countries to compare all four metrics side-by-side
-- **Difference calculations** — Shows +/- differences for each metric
-- **Better country identification** — Identifies which country is better on each metric, treating income capacity as higher-is-better
-- **Correct PPS formatting** — Shows income capacity values with PPS units rather than as a percent
-- **Trade-off labels** — "Clear advantage", "Mixed trade-off", or "No major difference"
-- **Plain-language summary** — Explains the comparison result in readable text
-- **MVP disclaimer** — Lists factors not included in this analysis
+- `data/clean/all_mvp_insights.csv`
+- `data/clean/all_mvp_timeseries.csv`
 
-**Launch the viewer:**
+Current viewer features:
+
+- Country selector and Country Profile.
+- Key Signals for pressure indicators.
+- Key Risk Driver based only on `inflation_pressure`, `housing_pressure`, and `poverty_pressure`.
+- Income and earnings capacity section with PPS formatting.
+- Detailed Indicator Cards.
+- Top 5 by Indicator, including net earnings capacity.
+- Current-value Country Comparison, including net earnings capacity.
+- Historical Trends and Cross-country Historical Trend Comparison, including net earnings capacity.
+- Indicator Glossary, methodology notes, MVP disclaimer, and CSV export.
+
+Direction logic:
+
+- Lower is better for `inflation_pressure`, `housing_pressure`, and `poverty_pressure`.
+- Higher is better for `income_capacity` and `net_earnings_capacity`.
+
+Launch the viewer:
+
 ```powershell
 streamlit run frontend/streamlit_app.py
 ```
 
 ## Complete Data Flow
 
-```
-┌─ Eurostat APIs ─┐
-│                 │
-├─ HICP data ────→ [Stage 1: HICP Pipeline]
-│                   ↓
-├─ SILC data ───→ [Stage 2: Housing Export]
-│  (housing)       ↓
-├─ SILC data ───→ [Stage 3: Poverty Export]
-│  (poverty)       ↓
-├─ ilc_di03 data ─→ [Stage 4: Income Capacity Export]
-│  (income_capacity) ↓
-└─────────────────→ [Stage 5: Combine Insights]
-                      ↓
-              all_mvp_insights.csv
-                      ↓
-            [Streamlit Viewer]
-                      ↓
-          Interactive MVP Dashboard
+```text
+Eurostat HICP       -> inflation pipeline        -> inflation_pressure_insights.csv
+Eurostat SILC       -> housing export            -> housing_pressure_insights.csv
+Eurostat SILC       -> poverty export            -> poverty_pressure_insights.csv
+Eurostat ilc_di03   -> income capacity export    -> income_capacity_insights.csv
+Eurostat earn_nt_net -> net earnings export      -> net_earnings_capacity_insights.csv
+
+clean indicator exports -> all_mvp_timeseries.csv
+insight card files      -> all_mvp_insights.csv
+
+all_mvp_insights.csv + all_mvp_timeseries.csv -> Streamlit app
 ```
 
 ## Configuration
 
-**Countries:** Defined in `data_pipeline/config/countries.yml`
-**Indicators & Eurostat codes:** Defined in `data_pipeline/config/datasets.yml`
+Countries are defined in `data_pipeline/config/countries.yml`.  
+Indicators and Eurostat filters are defined in `data_pipeline/config/datasets.yml`.
 
-**Important notes:**
-- Greece uses Eurostat code `EL` (not `GR`)
-- Norway code must be quoted in YAML as `"NO"` (unquoted NO parses as Boolean False)
+Important notes:
 
-## For Development
-
-- **Individual pipeline stages** can be run separately
-- **Test files** in `data_pipeline/` test individual components
-- **Insight generation** is modular — each indicator has its own insight generator
-- **Configuration-driven** — Add new countries or indicators by editing YAML configs
-
+- Greece uses Eurostat code `EL`, not `GR`.
+- Norway code must be quoted in YAML as `"NO"` because unquoted `NO` can parse as Boolean `False`.
+- `net_earnings_capacity` is scenario-based and should be interpreted as a directional working-person earnings signal, not as a universal salary model.

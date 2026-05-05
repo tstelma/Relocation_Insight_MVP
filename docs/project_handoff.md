@@ -1,29 +1,30 @@
 # Relocation Insight MVP - Project Handoff
 
 **Last Updated:** May 5, 2026  
-**Current Stage:** Stage 91 complete. Continue from **Stage 92**.
+**Current Stage:** Stage 95 complete. Continue from **Stage 96**.
 
 ## 1. Project Overview
 
-Relocation Insight MVP is a Eurostat-based Streamlit app for comparing European countries using early-stage relocation pressure and income-capacity signals.
+Relocation Insight MVP is a Eurostat-based Streamlit app for comparing European countries using early-stage relocation pressure, income-capacity, and working-person net earnings signals.
 
-The app is a decision-support MVP, not a full relocation recommendation engine. It helps users compare countries by inflation pressure, housing pressure, poverty pressure, and purchasing-power-adjusted income capacity.
+The app is a decision-support MVP, not a full relocation recommendation engine. It helps users compare countries by inflation pressure, housing pressure, poverty pressure, purchasing-power-adjusted income capacity, and scenario-based net earnings capacity.
 
 ## 2. Current Project Status
 
-The 4-indicator MVP is working end to end:
+The 5-indicator MVP is working end to end:
 
 1. `inflation_pressure`
 2. `housing_pressure`
 3. `poverty_pressure`
 4. `income_capacity`
+5. `net_earnings_capacity`
 
 Current state:
 
 - Eurostat ingestion and MVP pipeline are working.
 - Streamlit frontend is working with a modernized, compact, premium-feeling layout.
-- `all_mvp_insights.csv` powers current insights, current-value cards, profile views, and Top 5 rankings.
-- `all_mvp_timeseries.csv` powers historical trend charts.
+- `all_mvp_insights.csv` powers current insights, current-value cards, profile views, Top 5 rankings, and current comparison.
+- `all_mvp_timeseries.csv` powers historical trend charts, including net earnings capacity.
 - Country Comparison has been redesigned and compacted.
 - Country Comparison appears above Historical Trends.
 - Historical charts are factual/contextual only, with no forecast or prediction language.
@@ -37,15 +38,18 @@ Current state:
 | `housing_pressure` | Eurostat SILC | Housing overburden rate | % | Lower is better |
 | `poverty_pressure` | Eurostat SILC | At-risk-of-poverty rate | % | Lower is better |
 | `income_capacity` | Eurostat `ilc_di03` | Median equivalised net income | PPS | Higher is better |
+| `net_earnings_capacity` | Eurostat `earn_nt_net` | Annual net earnings for a single person, no children, earning 100% of average earnings | PPS | Higher is better |
 
 Important rules:
 
 - `income_capacity` uses Eurostat `ilc_di03`, median equivalised net income, PPS.
-- `income_capacity` is higher-is-better and should be displayed as PPS.
+- `net_earnings_capacity` uses Eurostat `earn_nt_net`, annual net earnings, PPS, for the selected worker scenario.
+- `income_capacity` and `net_earnings_capacity` are higher-is-better and should be displayed as PPS.
 - The three pressure indicators are lower-is-better.
-- `income_capacity` is not a pressure indicator and should not be selected as the Key Risk Driver.
+- `income_capacity` and `net_earnings_capacity` are not pressure indicators and should not be selected as the Key Risk Driver.
 - Percent indicator absolute changes should be treated as percentage points where shown.
-- `income_capacity` values and changes should use PPS.
+- Capacity values and changes should use PPS.
+- `net_earnings_capacity` is scenario-based and represents a directional working-person earnings signal, not all households or professions.
 
 ## 4. Data Outputs
 
@@ -60,6 +64,8 @@ Key clean outputs include:
 - `data/clean/housing_overburden_mvp_countries.csv`
 - `data/clean/poverty_risk_mvp_countries.csv`
 - `data/clean/income_capacity_mvp_countries.csv`
+- `data/clean/net_earnings_capacity_mvp_countries.csv`
+- `data/clean/net_earnings_capacity_insights.csv`
 - `data/clean/all_mvp_insights.csv`
 - `data/clean/all_mvp_timeseries.csv`
 
@@ -72,20 +78,20 @@ Current Streamlit app features:
 - Country Profile.
 - Key Signals.
 - Key Risk Driver.
-- Income capacity section.
+- Income and earnings capacity section.
 - Detailed Indicator Cards.
-- Compact Top 5 by Indicator section.
+- Compact Top 5 by Indicator section, including net earnings capacity.
 - Indicator-specific rankings with medals for ranks 1-3.
-- Current-value Country Comparison.
+- Current-value Country Comparison, including net earnings capacity.
 - Compact redesigned Country Comparison section.
 - Country Comparison appears above Historical Trends.
-- Historical Trends section.
+- Historical Trends section, including net earnings capacity.
 - Time-range selector:
   - Last 10 years
   - Last 20 years
   - Full available history
 - Historical outlier handling/context note.
-- Cross-country Historical Trend Comparison.
+- Cross-country Historical Trend Comparison, including net earnings capacity.
 - Indicator Glossary / searchable indicator help section.
 - Methodology notes.
 - MVP disclaimer.
@@ -104,6 +110,7 @@ Design decisions to preserve:
 - Avoid raw HTML rendering bugs.
 - Keep Country Comparison compact; it was redesigned because the previous version used too much vertical space.
 - Keep Top 5 by Indicator as a quick-reference widget, not an overall ranking.
+- Treat net earnings capacity as higher-is-better and format it as PPS.
 - Use real flag images where flags are shown, while keeping selectors as plain country names.
 - Prefer clear information hierarchy over dense tables.
 
@@ -119,7 +126,7 @@ Rules:
 - Full available history should remain accessible.
 - Missing data should not be interpolated.
 - Percent indicator absolute changes should be shown as percentage points where applicable.
-- `income_capacity` values and changes should use PPS.
+- `income_capacity` and `net_earnings_capacity` values and changes should use PPS.
 - Historical outlier handling should be explained with a short context note rather than hidden.
 
 ## 8. Country Coverage
@@ -183,18 +190,19 @@ Key entry points:
 - Early-stage financial/social signals only.
 - Historical charts provide factual context only.
 - No forecasting, prediction, or full trend interpretation.
-- No salary, tax, benefits, job-market, language, culture, healthcare, lifestyle, or personal-fit model yet.
+- No full salary, tax, benefits, job-market, language, culture, healthcare, lifestyle, or personal-fit model yet.
+- `net_earnings_capacity` represents one selected worker profile only.
 - No transparent composite scoring yet.
 - No final relocation recommendation engine.
 
 ## 12. Future Roadmap
 
-Continue from **Stage 92**.
+Continue from **Stage 96**.
 
 Recommended next options:
 
 1. Polish Top 5 / Indicator Focus if needed.
 2. Polish historical trend comparison.
 3. Prepare portfolio/LinkedIn presentation.
-4. Later add `net_earnings_capacity` using Eurostat `earn_nt_net`.
-5. Later add employment/job-market indicators.
+4. Later add employment/job-market indicators.
+5. Later consider transparent composite scoring.
