@@ -64,6 +64,11 @@ def run_indicator_export(indicator_key: str) -> None:
             "income_capacity export produced all NaN values. "
             "Please verify the ilc_di03 filters and unit selection in data_pipeline/config/datasets.yml."
         )
+    if indicator_key == "net_earnings_capacity" and combined_df["value"].isna().all():
+        raise RuntimeError(
+            "net_earnings_capacity export produced all NaN values. "
+            "Please verify the earn_nt_net filters in data_pipeline/config/datasets.yml."
+        )
 
     print(f"\nLatest row per country for {indicator_key}:")
     latest_rows = (
@@ -111,6 +116,19 @@ def run_indicator_export(indicator_key: str) -> None:
         print(f"Saved income capacity insights to: {insights_output_path}")
         print("\nIncome capacity insights preview:")
         print(insights_df[["country_code", "country_name", "title", "median_equivalised_net_income", "pressure_label"]])
+
+    # Generate net earnings capacity insights if net_earnings_capacity was exported
+    if indicator_key == "net_earnings_capacity":
+        from insights.generate_net_earnings_capacity_insights import generate_net_earnings_capacity_insight_cards
+
+        print(f"\nGenerating net earnings capacity insights...")
+        insights_df = generate_net_earnings_capacity_insight_cards(output_path)
+        insights_output_path = CLEAN_DATA_DIR / "net_earnings_capacity_insights.csv"
+        insights_df.to_csv(insights_output_path, index=False)
+
+        print(f"Saved net earnings capacity insights to: {insights_output_path}")
+        print("\nNet earnings capacity insights preview:")
+        print(insights_df[["country_code", "country_name", "title", "annual_net_earnings", "pressure_label"]])
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ INFLATION_INSIGHTS_PATH = Path("data") / "clean" / "inflation_pressure_insights.
 HOUSING_INSIGHTS_PATH = Path("data") / "clean" / "housing_pressure_insights.csv"
 POVERTY_INSIGHTS_PATH = Path("data") / "clean" / "poverty_pressure_insights.csv"
 INCOME_CAPACITY_INSIGHTS_PATH = Path("data") / "clean" / "income_capacity_insights.csv"
+NET_EARNINGS_CAPACITY_INSIGHTS_PATH = Path("data") / "clean" / "net_earnings_capacity_insights.csv"
 OUTPUT_PATH = Path("data") / "clean" / "all_mvp_insights.csv"
 
 
@@ -34,8 +35,22 @@ def combine_insights() -> pd.DataFrame:
     income_capacity_df["insight_category"] = "income_capacity"
     income_capacity_df = income_capacity_df.rename(columns={"median_equivalised_net_income": "metric_value"})
 
+    # Read net earnings capacity insights
+    net_earnings_capacity_df = pd.read_csv(NET_EARNINGS_CAPACITY_INSIGHTS_PATH)
+    net_earnings_capacity_df["insight_category"] = "net_earnings_capacity"
+    net_earnings_capacity_df = net_earnings_capacity_df.rename(columns={"annual_net_earnings": "metric_value"})
+
     # Combine the dataframes
-    combined_df = pd.concat([inflation_df, housing_df, poverty_df, income_capacity_df], ignore_index=True)
+    combined_df = pd.concat(
+        [
+            inflation_df,
+            housing_df,
+            poverty_df,
+            income_capacity_df,
+            net_earnings_capacity_df,
+        ],
+        ignore_index=True,
+    )
 
     # Select and order the final columns
     final_columns = [

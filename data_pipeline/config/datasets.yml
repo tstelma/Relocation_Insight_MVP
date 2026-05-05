@@ -63,3 +63,18 @@ datasets:
       sex: T
       age: TOTAL
       lang: en
+
+  net_earnings_capacity:
+    source: eurostat
+    dataset_code: earn_nt_net
+    frequency: yearly
+    geography_level: country
+    update_job: yearly
+    used_for:
+      - net_earnings_capacity
+    filters:
+      freq: A
+      currency: PPS
+      estruct: NET
+      ecase: P1_NCH_AW100
+      lang: en

@@ -57,6 +57,14 @@ INDICATOR_EXPORTS = [
         "better_direction": "higher_is_better",
         "source": "Eurostat ilc_di03",
     },
+    {
+        "indicator": "net_earnings_capacity",
+        "input_file": "net_earnings_capacity_mvp_countries.csv",
+        "value_column": "value",
+        "unit": "PPS",
+        "better_direction": "higher_is_better",
+        "source": "Eurostat earn_nt_net",
+    },
 ]
 
 
